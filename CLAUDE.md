@@ -128,7 +128,7 @@ Aly_dashboard/
 │   └── secrets.toml.example    # Plantilla commiteada del secrets.toml
 ├── app.py                      # Entry point — auth gate (require_login), st.navigation (position="hidden"), CSS, render_sidebar() + render_topbar()
 ├── pages/
-│   ├── overview.py             # Inicio: hero banner, 4 KPIs con sparkline + caption explicativo, growth chart + stat_list (peak hour/day, grid 2:1), heatmap bloques. La gráfica de actividad rellena días sin datos con 0, fija el eje X al rango y desactiva el zoom de Plotly (ver Convenciones)
+│   ├── overview.py             # Inicio: hero banner, 4 KPIs con sparkline + caption explicativo, growth chart + stat_list (peak hour/day, grid 2:1), usuarios activos por semana + «Registro y retorno» (registrados acumulados, nuevos en el período, volvieron en 2+ semanas; grid 2:1, desde 2026-11-11 para el M&E de México), heatmap bloques. La gráfica de actividad rellena días sin datos con 0, fija el eje X al rango y desactiva el zoom de Plotly (ver Convenciones)
 │   ├── usuarios.py             # Demografía: 3 KPIs (users, regiones, msg/usuario). Layout **según `bot_geo()`**: bots con mapa (apapachar) → 2:1 choropleth Colombia + cobertura + ranking top 10; bots sin mapa (mexico, demo) → ranking top 15 a ancho completo
 │   ├── conversaciones.py       # Keywords + resúmenes (no está en nav, en standby)
 │   ├── alertas.py              # Flags 🔴/🟠 (HIGH-/MEDIUM-), export Excel con transcripción, "marcar revisado" persistido en Supabase (reviewed_at)
@@ -177,6 +177,9 @@ Todas las queries de tiempo convierten a **GMT-5 (`America/Bogota`)** vía `AT T
 - `execute(query, params)` → rowcount (escrituras INSERT/UPDATE/DELETE)
 - `get_user_kpis(from, to)` → dict n_users, n_sessions
 - `get_messages_count(from, to)` → int
+- `get_registered_users(from, to)` → dict total (acumulado al cierre del rango) / nuevos (primera fila dentro del rango). Cuenta por `number` y su primera fila: `users_data` no tiene UNIQUE y tiene duplicados. En México la fila nace al aceptar el aviso de privacidad
+- `get_returning_users(from, to)` → dict activos / vuelven (escribieron, `role='user'`, en 2+ semanas distintas de lunes a domingo, hora local)
+- `get_weekly_active_users(from, to)` → df week/users (`role='user'`, semana lunes a domingo en GMT-5). La página rellena semanas vacías con 0
 - `get_hourly_distribution(from, to)` → df hour/messages (hora en GMT-5; no se usa actualmente en UI — disponible)
 - `get_users_by_country/gender/region(from, to)` → df
 - `get_daily_activity(from, to)` → df day/messages/users/**sessions** (day en GMT-5; sessions se usa para sparklines de Inicio)
@@ -288,7 +291,7 @@ La lógica de clasificación vive en `_classify_flag()` en `pages/alertas.py`. T
 
 ## Proyecto Complementario: Aly_Apapachar
 
-**Ubicación**: `/Users/daniel/Documents/Dev/Aly_Apapachar/`
+**Ubicación**: `/Users/daniel/Dev/Aly_Apapachar/`
 
 Aly_Apapachar es el bot WhatsApp (LangGraph + MongoDB + Twilio) que **genera los datos** que este dashboard visualiza.
 
@@ -311,7 +314,7 @@ Aly_Apapachar (bot) → Conversation Closer → Supabase → este dashboard
 | `vector_aly.rag_embeddings` | scripts de ingest |
 
 ### Otros escritores (ruido conocido)
-`aly-evals` (repo hermano en `~/Documents/Dev/aly-evals/`) corre benchmarks contra el bot y termina escribiendo cientos de filas sentinel (`client_number IN ('eval','verify','smoke',…)`, `conversation_id LIKE 'eval-%' / 'verify-%' / 'debug-%' / …`). El filtro en `_date_filter()` las excluye automáticamente del dashboard. Antes del filtro (commit `d981c15`, 2026-05-27), `eval` solo aportaba 458 conversaciones / 918 mensajes.
+`aly-evals` (repo hermano en `~/Dev/aly-evals/`) corre benchmarks contra el bot y termina escribiendo cientos de filas sentinel (`client_number IN ('eval','verify','smoke',…)`, `conversation_id LIKE 'eval-%' / 'verify-%' / 'debug-%' / …`). El filtro en `_date_filter()` las excluye automáticamente del dashboard. Antes del filtro (commit `d981c15`, 2026-05-27), `eval` solo aportaba 458 conversaciones / 918 mensajes.
 
 ---
 

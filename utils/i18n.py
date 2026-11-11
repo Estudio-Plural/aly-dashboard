@@ -112,6 +112,20 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "peak_hour":           {"es": "Hora pico", "en": "Peak hour"},
     "peak_day":            {"es": "Día más activo", "en": "Most active day"},
     "total_convs":         {"es": "Conversaciones", "en": "Conversations"},
+    # Registro y retorno (seguimiento M&E)
+    "weekly_active_title": {"es": "Usuarios activos por semana", "en": "Weekly active users"},
+    "weekly_active_sub":   {"es": "Personas que escribieron al menos una vez en la semana (lunes a domingo)",
+                            "en": "People who sent at least one message that week (Monday to Sunday)"},
+    "hover_week":          {"es": "Semana del", "en": "Week of"},
+    "weekly_partial_note": {"es": "La primera y la última semana pueden estar incompletas según el rango elegido.",
+                            "en": "The first and last weeks may be partial, depending on the selected range."},
+    "retention_title":     {"es": "Registro y retorno", "en": "Registration & return"},
+    "registered_total":    {"es": "Registrados (acumulado)", "en": "Registered (to date)"},
+    "registered_new":      {"es": "Nuevos registros en el período", "en": "New registrations in the period"},
+    "returning_users":     {"es": "Volvieron en 2+ semanas", "en": "Returned in 2+ weeks"},
+    "of":                  {"es": "de", "en": "of"},
+    "retention_note":      {"es": "Registrados: quienes completaron el registro inicial (en México, aceptar el aviso de privacidad). Volvieron: usuarios activos del período que escribieron en dos o más semanas distintas.",
+                            "en": "Registered: people who completed the initial sign-up (in Mexico, accepting the privacy notice). Returned: active users in the period who wrote in two or more different weeks."},
 
     # ---- Hero banner ----
     "hero_status_ok":       {"es": "Sistema saludable",          "en": "System healthy"},

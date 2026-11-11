@@ -102,6 +102,75 @@ def get_user_kpis(date_from=None, date_to=None, bot_id=None) -> dict:
     return {"n_users": int(row["n_users"]), "n_sessions": int(row["n_sessions"])}
 
 
+def get_registered_users(date_from=None, date_to=None, bot_id=None) -> dict:
+    """Personas registradas en `users_data`: acumulado al cierre del rango y nuevas dentro de él.
+
+    El bot solo inserta la fila cuando la persona termina el registro inicial; en
+    México eso es aceptar el aviso de privacidad (Aly, `registrarUsuario`). Se
+    cuenta por número y con su primera fila, porque `users_data` no tiene UNIQUE
+    y ya tiene duplicados.
+    """
+    where, params = _date_filter(
+        "created_at", None, date_to,
+        client_col="number", conv_col=None, bot_id=bot_id,
+    )
+    nuevos_expr = "COUNT(*)"
+    if date_from:
+        nuevos_expr = f"COUNT(*) FILTER (WHERE (first_at AT TIME ZONE '{TZ}')::date >= %s)"
+        params = [str(date_from)] + params
+    query = f"""
+        SELECT COUNT(*) AS total, {nuevos_expr} AS nuevos
+        FROM (
+            SELECT number, MIN(created_at) AS first_at
+            FROM public.users_data
+            {where}
+            GROUP BY number
+        ) reg
+    """
+    row = fetch_df(query, params).iloc[0]
+    return {"total": int(row["total"]), "nuevos": int(row["nuevos"])}
+
+
+def get_returning_users(date_from=None, date_to=None, bot_id=None) -> dict:
+    """Usuarios activos en el rango y cuántos escribieron en dos o más semanas distintas.
+
+    Activo = mandó al menos un mensaje (`role = 'user'`). Las semanas van de lunes
+    a domingo en hora local.
+    """
+    where, params = _date_filter(
+        "created_at", date_from, date_to, extra="role = 'user'", bot_id=bot_id,
+    )
+    query = f"""
+        SELECT COUNT(*) AS activos,
+               COUNT(*) FILTER (WHERE semanas >= 2) AS vuelven
+        FROM (
+            SELECT client_number,
+                   COUNT(DISTINCT date_trunc('week', created_at AT TIME ZONE '{TZ}')) AS semanas
+            FROM public.users_interactions
+            {where}
+            GROUP BY client_number
+        ) por_usuario
+    """
+    row = fetch_df(query, params).iloc[0]
+    return {"activos": int(row["activos"]), "vuelven": int(row["vuelven"])}
+
+
+def get_weekly_active_users(date_from=None, date_to=None, bot_id=None) -> pd.DataFrame:
+    """Usuarios distintos que mandaron al menos un mensaje cada semana (lunes a domingo, hora local)."""
+    where, params = _date_filter(
+        "created_at", date_from, date_to, extra="role = 'user'", bot_id=bot_id,
+    )
+    query = f"""
+        SELECT date_trunc('week', created_at AT TIME ZONE '{TZ}')::date AS week,
+               COUNT(DISTINCT client_number) AS users
+        FROM public.users_interactions
+        {where}
+        GROUP BY 1
+        ORDER BY 1
+    """
+    return fetch_df(query, params)
+
+
 def get_messages_count(date_from=None, date_to=None, bot_id=None) -> int:
     where, params = _date_filter("created_at", date_from, date_to, bot_id=bot_id)
     query = f"""
