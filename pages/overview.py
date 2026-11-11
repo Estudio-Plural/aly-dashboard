@@ -84,6 +84,7 @@ try:
     reg      = db.get_registered_users(date_from, date_to, bot_id=bot_id)
     ret      = db.get_returning_users(date_from, date_to, bot_id=bot_id)
     df_week  = db.get_weekly_active_users(date_from, date_to, bot_id=bot_id)
+    cov      = db.get_answer_coverage(date_from, date_to, bot_id=bot_id)
 except Exception as e:
     st.error(f"Error de base de datos: {e}")
     st.stop()
@@ -331,19 +332,28 @@ with col_week:
         ))
         fig_w.update_layout(**_chart_layout(height=260, bargap=0.35))
         fig_w.update_xaxes(tickformat="%d %b", fixedrange=True)
-        fig_w.update_yaxes(fixedrange=True, rangemode="tozero", tickformat=",d")
+        # Con pocos usuarios Plotly pone ticks fraccionarios y ",d" los repite
+        # (0, 1, 1, 2, 2…): de a uno mientras el máximo sea chico.
+        y_dtick = 1 if int(df_week["users"].max()) <= 8 else None
+        fig_w.update_yaxes(fixedrange=True, rangemode="tozero", tickformat=",d", dtick=y_dtick)
         st.plotly_chart(fig_w, use_container_width=True, config={"displayModeBar": False})
         st.caption(t("weekly_partial_note"))
 
 with col_ret:
+    n_answered = cov["preguntas"] - cov["sin_info"]
+    answered_txt = (
+        f"{round(100 * n_answered / cov['preguntas'])} % · {n_answered:,} {t('of')} {cov['preguntas']:,}"
+        if cov["preguntas"] else "—"
+    )
     card_header(title=t("retention_title"), icon_svg=KPI_ICONS["users"])
     stat_list([
         {"label": t("registered_total"), "value": f"{reg['total']:,}"},
         {"label": t("registered_new"),   "value": f"{reg['nuevos']:,}"},
         {"label": t("returning_users"),
          "value": f"{ret['vuelven']:,} {t('of')} {ret['activos']:,}"},
+        {"label": t("answered_share"), "value": answered_txt},
     ])
-    st.caption(t("retention_note"))
+    st.caption(t("retention_note") + " " + t("answered_note"))
 
 st.markdown("<div style='margin:1.2rem 0 0.25rem'></div>", unsafe_allow_html=True)
 

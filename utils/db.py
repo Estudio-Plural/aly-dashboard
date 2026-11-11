@@ -155,6 +155,52 @@ def get_returning_users(date_from=None, date_to=None, bot_id=None) -> dict:
     return {"activos": int(row["activos"]), "vuelven": int(row["vuelven"])}
 
 
+# Mensajes sociales que no cuentan como pregunta: saludos, agradecimientos,
+# despedidas y la respuesta al aviso de privacidad. Se comparan en minúsculas,
+# sin tildes ni signos de puntuación, y pueden venir combinados ("hola gracias").
+_SOCIAL_MSG_RE = (
+    r"^((hola|hi|hello|oi|ola|buen[oa]s?( (dias?|tardes|noches))?|gracias|muchas gracias"
+    r"|mil gracias|thanks|thank you|ok|okay|vale|listo|perfecto|super|genial|excelente"
+    r"|chao|adios|hasta luego|bye|aly|acepto|no acepto|[12])\s*)+$"
+)
+# Respuesta de Aly cuando el material no cubre la pregunta. Los tres bots abren
+# con la misma frase (FACTUAL en src/Constants/*AgentPrompts.ts del repo Aly);
+# también cubre las dos variantes viejas de apapachar ("No tengo información
+# sobre eso", "No tengo esa información en el contexto...").
+_NO_INFO_RE = r"^\s*(no tengo (esa )?informaci[oó]n|i don['’]t have that)"
+
+
+def get_answer_coverage(date_from=None, date_to=None, bot_id=None) -> dict:
+    """Preguntas del período y cuántas recibieron "No tengo esa información".
+
+    Pregunta = mensaje de la usuaria (`role='user'`) que no es puramente social
+    (ver `_SOCIAL_MSG_RE`). Cada pregunta se empareja con el mensaje siguiente
+    de la misma conversación; la ventana corre sobre toda la tabla antes de
+    filtrar, para no perder la respuesta de una pregunta en el borde del rango.
+    """
+    where, params = _date_filter(
+        "created_at", date_from, date_to, extra="role = 'user' AND NOT social", bot_id=bot_id,
+    )
+    query = f"""
+        WITH msgs AS (
+            SELECT conversation_id, client_number, role, message, created_at, bot_id,
+                   LEAD(role)    OVER w AS next_role,
+                   LEAD(message) OVER w AS next_message,
+                   lower(translate(regexp_replace(trim(message), '[¡!¿?.,;:]+', '', 'g'),
+                                   'áéíóúÁÉÍÓÚ', 'aeiouaeiou')) ~ %s AS social
+            FROM public.users_interactions
+            WINDOW w AS (PARTITION BY bot_id, client_number, conversation_id
+                         ORDER BY created_at, CASE role WHEN 'user' THEN 0 ELSE 1 END)
+        )
+        SELECT COUNT(*) AS preguntas,
+               COUNT(*) FILTER (WHERE next_role = 'ia' AND next_message ~* %s) AS sin_info
+        FROM msgs
+        {where}
+    """
+    row = fetch_df(query, [_SOCIAL_MSG_RE, _NO_INFO_RE] + params).iloc[0]
+    return {"preguntas": int(row["preguntas"]), "sin_info": int(row["sin_info"])}
+
+
 def get_weekly_active_users(date_from=None, date_to=None, bot_id=None) -> pd.DataFrame:
     """Usuarios distintos que mandaron al menos un mensaje cada semana (lunes a domingo, hora local)."""
     where, params = _date_filter(

@@ -128,7 +128,7 @@ Aly_dashboard/
 │   └── secrets.toml.example    # Plantilla commiteada del secrets.toml
 ├── app.py                      # Entry point — auth gate (require_login), st.navigation (position="hidden"), CSS, render_sidebar() + render_topbar()
 ├── pages/
-│   ├── overview.py             # Inicio: hero banner, 4 KPIs con sparkline + caption explicativo, growth chart + stat_list (peak hour/day, grid 2:1), usuarios activos por semana + «Registro y retorno» (registrados acumulados, nuevos en el período, volvieron en 2+ semanas; grid 2:1, desde 2026-11-11 para el M&E de México), heatmap bloques. La gráfica de actividad rellena días sin datos con 0, fija el eje X al rango y desactiva el zoom de Plotly (ver Convenciones)
+│   ├── overview.py             # Inicio: hero banner, 4 KPIs con sparkline + caption explicativo, growth chart + stat_list (peak hour/day, grid 2:1), usuarios activos por semana + «Indicadores de seguimiento» (registrados acumulados, nuevos en el período, volvieron en 2+ semanas, % respondidas con el material; grid 2:1, desde 2026-11-11 para el M&E de México), heatmap bloques. La gráfica de actividad rellena días sin datos con 0, fija el eje X al rango y desactiva el zoom de Plotly (ver Convenciones)
 │   ├── usuarios.py             # Demografía: 3 KPIs (users, regiones, msg/usuario). Layout **según `bot_geo()`**: bots con mapa (apapachar) → 2:1 choropleth Colombia + cobertura + ranking top 10; bots sin mapa (mexico, demo) → ranking top 15 a ancho completo
 │   ├── conversaciones.py       # Keywords + resúmenes (no está en nav, en standby)
 │   ├── alertas.py              # Flags 🔴/🟠 (HIGH-/MEDIUM-), export Excel con transcripción, "marcar revisado" persistido en Supabase (reviewed_at)
@@ -179,6 +179,7 @@ Todas las queries de tiempo convierten a **GMT-5 (`America/Bogota`)** vía `AT T
 - `get_messages_count(from, to)` → int
 - `get_registered_users(from, to)` → dict total (acumulado al cierre del rango) / nuevos (primera fila dentro del rango). Cuenta por `number` y su primera fila: `users_data` no tiene UNIQUE y tiene duplicados. En México la fila nace al aceptar el aviso de privacidad
 - `get_returning_users(from, to)` → dict activos / vuelven (escribieron, `role='user'`, en 2+ semanas distintas de lunes a domingo, hora local)
+- `get_answer_coverage(from, to)` → dict preguntas / sin_info. Pregunta = mensaje `role='user'` que no es puramente social (`_SOCIAL_MSG_RE`: saludos, gracias, despedidas, respuesta al aviso). Cada una se empareja con el mensaje siguiente de su conversación (LEAD sobre toda la tabla, antes de filtrar el rango); `sin_info` = la respuesta abre con «No tengo esa información» / «I don't have that» (`_NO_INFO_RE`, la frase FACTUAL de los tres bots en el repo Aly). **Si el bot cambia esa frase, actualizar `_NO_INFO_RE`** o el % sube en falso
 - `get_weekly_active_users(from, to)` → df week/users (`role='user'`, semana lunes a domingo en GMT-5). La página rellena semanas vacías con 0
 - `get_hourly_distribution(from, to)` → df hour/messages (hora en GMT-5; no se usa actualmente en UI — disponible)
 - `get_users_by_country/gender/region(from, to)` → df
