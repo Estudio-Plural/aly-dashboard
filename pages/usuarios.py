@@ -7,9 +7,13 @@ muestran solo el ranking de regiones a ancho completo — sin mapa mal
 etiquetado ni un "% del país" que no significa nada fuera de Colombia.
 """
 
+import datetime
+
 import streamlit as st
 
 from utils.i18n import t
+from utils import export as deid_export, pseudonym
+from utils.bots import bot_label, bot_weekly_deidentified
 from utils import db
 from utils.bots import bot_geo
 from utils.styles import COLORS, page_header, card_header, stat_list
@@ -129,3 +133,47 @@ else:
     )
     _render_region_ranking(limit=15)
     st.caption(t("no_geo_map"))
+
+
+# ── Exportación sin identificar ──────────────────────────────────────────────
+# Para el M&E (pedido de Semillas, 2026-11-11): ID seudónimo, fecha/hora y
+# alerta de riesgo, sin teléfono ni nombre. El ID sale de la misma llave que el
+# Excel de los lunes (utils/pseudonym.py), así que coinciden. Sin llave no se
+# ofrece: la promesa es que el ID no cambie entre exportaciones.
+@st.cache_data(ttl=600, show_spinner=False)
+def _deid_excel(bot_id, date_from, date_to, lang):
+    raw = db.get_pseudonymous_export_data(date_from, date_to, bot_id=bot_id)
+    date_to_incl = str(datetime.date.fromisoformat(date_to) - datetime.timedelta(days=1))
+    return deid_export.build_excel(
+        raw, pseudonym.get_key(),
+        bot_id=bot_id, program=bot_label(bot_id),
+        date_from=date_from, date_to_incl=date_to_incl, lang=lang,
+    )
+
+
+st.markdown("<div style='margin:1.6rem 0 0.25rem'></div>", unsafe_allow_html=True)
+card_header(
+    title=t("deid_export_title"),
+    subtitle=t("deid_export_sub"),
+    icon_svg=KPI_ICONS["chart"],
+)
+if pseudonym.get_key() is None:
+    is_admin = st.session_state.get("auth_role") == "admin"
+    st.caption(t("deid_export_missing_key") if is_admin else t("deid_export_unavailable"))
+else:
+    lang = st.session_state.get("lang", "es")
+    try:
+        xlsx = _deid_excel(bot_id, date_from, date_to, lang)
+    except Exception as e:
+        st.error(t("deid_export_error").format(e=e))
+    else:
+        date_to_incl = str(datetime.date.fromisoformat(date_to) - datetime.timedelta(days=1))
+        st.download_button(
+            label=t("deid_export_button"),
+            data=xlsx,
+            file_name=deid_export.file_name(bot_id, date_from, date_to_incl, lang),
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            on_click="ignore",
+            icon=":material/download:",
+        )
+        st.caption(t("deid_export_note") if bot_weekly_deidentified(bot_id) else t("deid_export_note_plain"))

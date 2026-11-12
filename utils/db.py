@@ -170,6 +170,24 @@ _SOCIAL_MSG_RE = (
 _NO_INFO_RE = r"^\s*(no tengo (esa )?informaci[oó]n|i don['’]t have that)"
 
 
+# Cada mensaje con el que le sigue en su conversación (`next_role`, `next_message`)
+# y si es puramente social. La ventana corre sobre toda la tabla antes de que se
+# aplique el WHERE de fechas, para no perder la respuesta de una pregunta que cae
+# en el borde del rango. Lleva un parámetro: `_SOCIAL_MSG_RE`.
+_MSGS_WITH_REPLY_CTE = """
+    WITH msgs AS (
+        SELECT conversation_id, client_number, role, message, created_at, bot_id,
+               LEAD(role)    OVER w AS next_role,
+               LEAD(message) OVER w AS next_message,
+               lower(translate(regexp_replace(trim(message), '[¡!¿?.,;:]+', '', 'g'),
+                               'áéíóúÁÉÍÓÚ', 'aeiouaeiou')) ~ %s AS social
+        FROM public.users_interactions
+        WINDOW w AS (PARTITION BY bot_id, client_number, conversation_id
+                     ORDER BY created_at, CASE role WHEN 'user' THEN 0 ELSE 1 END)
+    )
+"""
+
+
 def get_answer_coverage(date_from=None, date_to=None, bot_id=None) -> dict:
     """Preguntas del período y cuántas recibieron "No tengo esa información".
 
@@ -182,16 +200,7 @@ def get_answer_coverage(date_from=None, date_to=None, bot_id=None) -> dict:
         "created_at", date_from, date_to, extra="role = 'user' AND NOT social", bot_id=bot_id,
     )
     query = f"""
-        WITH msgs AS (
-            SELECT conversation_id, client_number, role, message, created_at, bot_id,
-                   LEAD(role)    OVER w AS next_role,
-                   LEAD(message) OVER w AS next_message,
-                   lower(translate(regexp_replace(trim(message), '[¡!¿?.,;:]+', '', 'g'),
-                                   'áéíóúÁÉÍÓÚ', 'aeiouaeiou')) ~ %s AS social
-            FROM public.users_interactions
-            WINDOW w AS (PARTITION BY bot_id, client_number, conversation_id
-                         ORDER BY created_at, CASE role WHEN 'user' THEN 0 ELSE 1 END)
-        )
+        {_MSGS_WITH_REPLY_CTE}
         SELECT COUNT(*) AS preguntas,
                COUNT(*) FILTER (WHERE next_role = 'ia' AND next_message ~* %s) AS sin_info
         FROM msgs
@@ -327,6 +336,64 @@ def get_users_by_region(date_from=None, date_to=None, bot_id=None) -> pd.DataFra
 # ---------------------------------------------------------------------------
 # Export — full filtered dataset
 # ---------------------------------------------------------------------------
+
+def get_pseudonymous_export_data(date_from=None, date_to=None, bot_id=None) -> dict:
+    """Datos crudos para la exportación sin identificar (``utils/export.py``).
+
+    Devuelve tres DataFrames que TODAVÍA traen número y ``conversation_id``:
+    el seudónimo se pone en ``utils/export.py``, que es lo único que debe
+    llamar esta función. Sin texto de mensajes, nombres ni resúmenes.
+
+    - ``messages``: un mensaje de la usuaria (``role='user'``) por fila, con si
+      es social y cómo respondió Aly (mismas reglas que ``get_answer_coverage``).
+    - ``conversations``: una fila por conversación cerrada (``id`` único), con
+      ``flag_severity`` (el enum limpio que también usan los correos de alertas)
+      y las etiquetas de riesgo de ``flags``. ``conversation_date`` es naive en
+      UTC: se ancla a UTC antes de pasarla a hora local.
+    - ``registrations``: primera fila de ``users_data`` por número hasta el
+      cierre del rango (acumulado, como ``get_registered_users``).
+    """
+    where_m, params_m = _date_filter(
+        "created_at", date_from, date_to, extra="role = 'user'", bot_id=bot_id,
+    )
+    messages = fetch_df(f"""
+        {_MSGS_WITH_REPLY_CTE}
+        SELECT client_number, conversation_id,
+               (created_at AT TIME ZONE '{TZ}') AS local_ts,
+               social,
+               (next_role = 'ia') AS has_reply,
+               (next_role = 'ia' AND next_message ~* %s) AS no_info
+        FROM msgs
+        {where_m}
+        ORDER BY created_at
+    """, [_SOCIAL_MSG_RE, _NO_INFO_RE] + params_m)
+
+    conv_utc = "(conversation_date AT TIME ZONE 'UTC')"
+    where_c, params_c = _date_filter(
+        conv_utc, date_from, date_to, client_col="user_number", bot_id=bot_id,
+    )
+    conversations = fetch_df(f"""
+        SELECT user_number AS client_number, conversation_id,
+               ({conv_utc} AT TIME ZONE '{TZ}') AS local_ts,
+               messages_count, flag_severity, flags
+        FROM public.conversations_data
+        {where_c}
+        ORDER BY conversation_date, id
+    """, params_c)
+
+    where_r, params_r = _date_filter(
+        "created_at", None, date_to, client_col="number", conv_col=None, bot_id=bot_id,
+    )
+    registrations = fetch_df(f"""
+        SELECT number AS client_number, (MIN(created_at) AT TIME ZONE '{TZ}') AS local_ts
+        FROM public.users_data
+        {where_r}
+        GROUP BY number
+        ORDER BY 2
+    """, params_r)
+
+    return {"messages": messages, "conversations": conversations, "registrations": registrations}
+
 
 def get_interactions_export(date_from=None, date_to=None, bot_id=None) -> pd.DataFrame:
     where, params = _date_filter("created_at", date_from, date_to, bot_id=bot_id)
