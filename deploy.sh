@@ -38,7 +38,16 @@ git cat-file -e origin/main:docker-compose.yml 2>/dev/null \
 
 ANTES=$(git rev-parse -q --short --verify HEAD || echo "-------")
 git reset -q --hard origin/main
+# reset --hard no borra archivos sin seguimiento: lo que main ya no tiene (o
+# lo que quedó del rsync del primer despliegue) seguiría en la carpeta y Docker
+# lo copiaría a la imagen. clean -fd los borra; SIN -x, así que respeta
+# .gitignore y no toca .env ni .streamlit/secrets.toml.
+git clean -q -fd
 echo "== main: $ANTES → $(git rev-parse --short HEAD)  $(git log -1 --format=%s)"
+
+# Una carpeta pages/ hace que Streamlit corra cada página sin pasar por el
+# login (ver CLAUDE.md, «Navegación»). Si aparece, no se despliega.
+[ ! -d pages ] || { echo "❌ Hay una carpeta pages/ en el servidor: las páginas se abrirían sin login. Despliegue detenido."; exit 1; }
 
 chmod 600 .env .streamlit/secrets.toml
 
