@@ -27,7 +27,7 @@ El dashboard **detecta automáticamente** los `bot_id` disponibles en la DB (`ut
 ## Autenticación y roles
 Login usuario/contraseña con **`streamlit-authenticator` (0.4.x)**. La puerta vive en `utils/auth.py:require_login()`, llamada en `app.py` **antes** de la nav y las páginas: si no hay sesión válida renderiza la pantalla de login (logo Aly + form) y hace `st.stop()`. La sesión persiste vía cookie firmada (no re-login en cada rerun).
 
-**Credenciales y roles viven en `st.secrets`** (`.streamlit/secrets.toml` en local — **gitignored**; secrets manager en Streamlit Cloud). Plantilla commiteada: `.streamlit/secrets.toml.example`. Estructura: `[cookie]`, `[credentials.usernames.<user>]` (con `password` = **hash bcrypt**, `roles = ["..."]`) y `[roles]` que mapea rol → lista de `bot_id` permitidos (`"*"` = todos).
+**Credenciales y roles viven en `st.secrets`** (`.streamlit/secrets.toml` en local — **gitignored**; en producción, `/opt/aly-dashboard/.streamlit/secrets.toml` en plural-aly). Plantilla commiteada: `.streamlit/secrets.toml.example`. Estructura: `[cookie]`, `[credentials.usernames.<user>]` (con `password` = **hash bcrypt**, `roles = ["..."]`) y `[roles]` que mapea rol → lista de `bot_id` permitidos (`"*"` = todos).
 
 **Generar un hash bcrypt** para una contraseña nueva:
 ```bash
@@ -121,7 +121,13 @@ corrupta. Es distinto del caveat de género de `apapachar` (ese guardaba vacío,
 ## Estructura de archivos
 ```
 Aly_dashboard/
-├── .env                        # DATABASE_URL
+├── .env                        # DATABASE_URL, PSEUDONYM_KEY (GITIGNORED)
+├── Dockerfile                  # Imagen de producción (Python 3.14, instala con constraints.txt)
+├── .dockerignore               # Deja .env y secrets.toml fuera de la imagen
+├── docker-compose.yml          # Producción en plural-aly: dashboard + Caddy propio en el 443
+├── constraints.txt             # Versiones exactas probadas; las usa solo el Dockerfile
+├── caddy/Caddyfile             # aly-panel.estudio-plural.co → dashboard:8501 (certificado por TLS-ALPN, sin el 80)
+├── .github/workflows/deploy.yml # Despliegue en cada push a main, con el runner propio del servidor
 ├── .streamlit/
 │   ├── config.toml             # Tema Streamlit
 │   ├── secrets.toml            # Auth: credenciales + roles (GITIGNORED — no commitear)
@@ -240,7 +246,7 @@ El bot (`Aly_Apapachar`) escribe en `conversations_data` dos columnas JSONB extr
 - **Íconos del sidebar**: override CSS para que las ligatures de Material Symbols no hereden `Open Sans` del selector global `*` del sidebar (ver `utils/styles.py`).
 - **Estado compartido entre usuarios**: persistir en Supabase, no en `st.session_state` (que es por sesión de browser). Ej.: `reviewed_at` de las flags vive en `conversations_data`, no en memoria.
 - **Filtrado de cuentas test**: toda query nueva sobre `users_interactions/conversations_data` debe pasar por `_date_filter()` para heredar el filtro de aly-evals automáticamente. No bypassear con `fetch_df` directo sin pensar en qué datos estás trayendo.
-- **Python 3.9 (entorno de runtime)**: la app corre sobre el Python 3.9 del sistema. **No usar la sintaxis `X | None`** (PEP 604) en anotaciones de módulos compartidos — falla al importar con `TypeError: unsupported operand type(s) for |`. Usar `Optional[X]` de `typing`, defaults sin tipo, o `from __future__ import annotations` al inicio del módulo (como `utils/auth.py`). Ojo: `py_compile` NO atrapa esto (es eval en runtime al definir) y un HTTP 200 de Streamlit es solo el shell estático; verificar con `python3 -c "import módulo"` o `streamlit.testing.v1.AppTest`.
+- **Python 3.9 en local, 3.14 en producción**: en el Mac la app corre sobre el Python 3.9 del sistema; en plural-aly, sobre 3.14 (Docker). El código tiene que andar en los dos. **No usar la sintaxis `X | None`** (PEP 604) en anotaciones de módulos compartidos — falla al importar con `TypeError: unsupported operand type(s) for |`. Usar `Optional[X]` de `typing`, defaults sin tipo, o `from __future__ import annotations` al inicio del módulo (como `utils/auth.py`). Ojo: `py_compile` NO atrapa esto (es eval en runtime al definir) y un HTTP 200 de Streamlit es solo el shell estático; verificar con `python3 -c "import módulo"` o `streamlit.testing.v1.AppTest`.
 
 ---
 
@@ -274,7 +280,7 @@ Pedido de Rachel para el M&E de Semillas: ID seudónimo, fecha/hora y alerta de 
 - **Hojas**: «Cómo leer» (definiciones; la versión de México aclara que la hora del centro de México es GMT-6), «Mensajes» (un mensaje `role='user'` por fila: ID, ID conversación, fecha y hora, semana, Pregunta / Saludo o cierre, cómo respondió Aly), «Conversaciones» (una por fila: alerta Alta/Media/Baja/Ninguna desde `flag_severity` + las etiquetas `HIGH-/MEDIUM-/LOW-` sin prefijo), «Registros» (primera fila de `users_data` por número, acumulado hasta el cierre del rango).
 - **No lleva** teléfono, nombre, texto de mensajes, `summary` ni `flag_reasoning`. `build_excel()` revisa antes de devolver que ninguna celda sea un número o `conversation_id` crudo (y que ningún identificador de 10+ caracteres aparezca adentro de una celda); si pasa, falla en vez de entregar el archivo.
 - **IDs**: `D-` + 8 hex de HMAC-SHA256(`PSEUDONYM_KEY`, número). **Tiene que coincidir con `src/pseudonym.py` de aly-weekly-report**, que pone el mismo ID en el Excel de los lunes de México. Las conversaciones llevan `C-` + HMAC de `conv:<número>:<conversation_id>`, porque el `conversation_id` empieza con el teléfono.
-- **Llave**: `PSEUDONYM_KEY` en los secrets de Cloud **como clave de primer nivel** (arriba de `[cookie]`; Streamlit la expone también como variable de entorno) y en `.env` en local. Es la misma del secret del reporte semanal; copia en `~/Dev/_backups_aly/aly-weekly-report.env`. Si se pierde, los IDs cambian. Sin llave la sección no ofrece el botón (al admin le dice qué falta).
+- **Llave**: `PSEUDONYM_KEY` en el `.env` (en producción, `/opt/aly-dashboard/.env` en plural-aly; en local, el `.env` del repo). `get_key()` también la busca como clave de primer nivel de `st.secrets`, arriba de `[cookie]`. Es la misma del secret del reporte semanal; copia en `~/Dev/_backups_aly/aly-weekly-report.env`. Si se pierde, los IDs cambian. Sin llave la sección no ofrece el botón (al admin le dice qué falta).
 - **Verificado el 2026-11-11** contra las queries del dashboard en los tres bots: activos, los que vuelven, activos por semana, preguntas, «sin información», registrados y alertas Alta/Media recalculados desde el Excel coinciden; los IDs coinciden con los del reporte semanal; cero celdas con teléfono, nombre o `conversation_id`.
 
 ---
@@ -333,9 +339,15 @@ Aly_Apapachar (bot) → Conversation Closer → Supabase → este dashboard
 
 ---
 
-## Deployment
-- **Local**: `python3 -m streamlit run app.py`
-- **Producción**: Streamlit Cloud (share.streamlit.io) — secrets: `DATABASE_URL`, `PSEUDONYM_KEY` (ambos de primer nivel) + `[cookie]`, `[credentials]`, `[roles]`
-- **URL**: https://aly-dashboard-pejmrmpdvh8wqefx2ibnzj.streamlit.app/
-- Auto-redeploy al hacer push a `main`
-- **Gotcha**: al agregar un símbolo nuevo a un módulo ya importado (ej. una función nueva en `components/filters.py`), el hot-reload puede fallar con `ImportError` por caché de `sys.modules`. Solución: **Reboot app** desde Manage app en Streamlit Cloud (no requiere cambio de código).
+## Despliegue
+
+**Producción: https://aly-panel.estudio-plural.co** — Docker en **plural-aly** (el servidor del bot Aly, Hostinger, 187.124.150.145), en `/opt/aly-dashboard`, como proyecto de compose propio (`-p aly-dashboard`): no comparte red ni archivos con el bot. Antes estaba en Streamlit Cloud (`aly-dashboard-pejmrmpdvh8wqefx2ibnzj.streamlit.app`); se mudó en nov-2026.
+
+- **Cómo se despliega**: cada push a `main` corre `.github/workflows/deploy.yml` en un **runner propio instalado en el servidor** (label `aly-dashboard`, usuario `aly-deploy`, del grupo docker y dueño de `/opt/aly-dashboard`). Copia el código con rsync, hace `docker compose up -d --build`, recarga Caddy y verifica `/_stcore/health` por HTTPS. También se puede correr a mano desde Actions (`workflow_dispatch`). Merge = despliegue, igual que antes con Streamlit Cloud. **El repo tiene que ser privado**: con un runner propio, un repo público deja que un PR desde un fork corra código en el servidor del bot.
+- **Secretos** (fuera de git y de la imagen, `chmod 600`, en `/opt/aly-dashboard`): `.env` con `DATABASE_URL` y `PSEUDONYM_KEY`, y `.streamlit/secrets.toml` con `[cookie]`, `[credentials]` y `[roles]`. El rsync del workflow los excluye, así que sobreviven a cada despliegue. Para cambiar una contraseña o la llave: editar el archivo en el servidor y `docker compose -p aly-dashboard restart dashboard` desde `/opt/aly-dashboard`. **`PSEUDONYM_KEY` es la misma del reporte semanal** (ver *Exportación sin identificar*).
+- **HTTPS**: Caddy propio del panel, que publica **solo el 443**. El 80 del servidor es de Traefik (el proxy del bot) y no se toca: Caddy saca el certificado de Let's Encrypt por el 443 (desafío TLS-ALPN-01, `disable_http_challenge`). Por eso el link siempre va con `https://`; un `http://` lo contesta Traefik. DNS: registro A `aly-panel` → 187.124.150.145 en **Wix** (los nameservers de estudio-plural.co son de Wix).
+- **Montajes de carpeta, no de archivo**: `./.streamlit` y `./caddy` se montan como carpetas. Un montaje de un archivo suelto queda pegado al archivo viejo cuando rsync o un editor lo reemplazan, y el contenedor seguiría leyendo la versión anterior.
+- **Versiones**: el Dockerfile instala `requirements.txt` **con `constraints.txt`** (las versiones exactas con las que se probó; Streamlit 1.67, pandas 3.1). Así cada despliegue arma la misma imagen. Para subir una versión: cambiarla en `constraints.txt` a propósito, probar con AppTest en un venv de Homebrew 3.14 y verificar que haya ruedas para Linux con `pip download --only-binary=:all: --platform manylinux_2_28_x86_64 --python-version 3.14 -r requirements.txt -c constraints.txt`. Streamlit 1.67 avisa que `use_container_width` se va a quitar: antes de subir Streamlit, pasarlo a `width="stretch"`.
+- **Límites**: el contenedor del panel tiene `mem_limit: 1g` y `cpus: 1.0` para no quitarle recursos al bot, y los logs de Docker rotan (10 MB × 3).
+- **Acceso al servidor**: el clasificador de Claude bloquea hasta las lecturas por SSH a producción, así que lo del servidor lo corre Daniel con `!` (los comandos, al portapapeles).
+- **Local**: `python3 -m streamlit run app.py` (Python 3.9 del sistema, sin Docker).

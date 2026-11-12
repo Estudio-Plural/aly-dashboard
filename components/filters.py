@@ -6,7 +6,7 @@ import streamlit as st
 from utils.i18n import t
 
 # UI opera en GMT-5 (Colombia/México). "Hoy" debe leerse en esa zona, no en
-# la del servidor (Streamlit Cloud corre en UTC).
+# la del servidor (el contenedor de producción corre en UTC).
 TZ = ZoneInfo("America/Bogota")
 
 

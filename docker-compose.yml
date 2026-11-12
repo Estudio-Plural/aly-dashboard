@@ -1,31 +1,63 @@
-version: "3.9"
+# Producción: plural-aly (el servidor del bot Aly), en /opt/aly-dashboard.
+# Se levanta como proyecto propio (-p aly-dashboard): no comparte red ni
+# archivos con el bot, y desplegar el panel no reinicia nada del bot.
+#
+# En /opt/aly-dashboard, además del código, viven los dos secretos (fuera de
+# git y de la imagen): .env (DATABASE_URL, PSEUDONYM_KEY) y
+# .streamlit/secrets.toml (cookie, usuarios y roles del login).
 
 services:
   dashboard:
     build: .
     image: aly-dashboard:latest
-    container_name: aly_dashboard
-    restart: always
-    ports:
-      - "${DASHBOARD_PORT:-8501}:8501"
+    container_name: aly-dashboard
     env_file:
       - .env
-    # Optional: mount .env as a volume so changes apply without rebuild
-    # volumes:
-    #   - ./.env:/app/.env:ro
+    volumes:
+      # La carpeta y no el archivo suelto: un montaje de archivo queda pegado
+      # al archivo viejo cuando lo reemplazan (rsync, un editor), y el
+      # contenedor seguiría leyendo la versión anterior. :ro porque el
+      # contenedor no tiene por qué poder reescribir los secretos.
+      - ./.streamlit:/app/.streamlit:ro
+    # `expose` y no `ports`: si se publicara el 8501, el panel quedaría abierto
+    # por IP saltándose el TLS.
+    expose:
+      - "8501"
+    # Comparte máquina con el bot: que un pico del panel no le quite memoria.
+    mem_limit: 1g
+    cpus: 1.0
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8501/_stcore/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
 
-# ── Nginx reverse proxy (recommended for HTTPS on VPS) ────────────────────
-# Add a separate nginx service or configure your host-level nginx to proxy
-# https://your-domain.com → http://localhost:8501
-# with SSL via Certbot/Let's Encrypt.
-#
-# Minimal nginx location block:
-#
-#   location / {
-#       proxy_pass         http://127.0.0.1:8501;
-#       proxy_http_version 1.1;
-#       proxy_set_header   Upgrade $http_upgrade;
-#       proxy_set_header   Connection "upgrade";
-#       proxy_set_header   Host $host;
-#       proxy_read_timeout 86400;
-#   }
+  caddy:
+    image: caddy:2.11.2
+    container_name: aly-dashboard-caddy
+    ports:
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      # La carpeta, por lo mismo que .streamlit arriba.
+      - ./caddy:/etc/caddy:ro
+      # Certificados y estado de ACME: sobreviven a cada despliegue.
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - dashboard
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

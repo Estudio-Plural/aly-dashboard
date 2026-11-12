@@ -2,7 +2,7 @@
 
 Login usuario/contraseña vía ``streamlit-authenticator`` (0.4.x). Credenciales,
 cookie y mapeo rol→bots viven en ``st.secrets`` (``.streamlit/secrets.toml`` en
-local, secrets manager en Streamlit Cloud). Las contraseñas se guardan como hash
+local; en producción, el mismo archivo en /opt/aly-dashboard). Las contraseñas se guardan como hash
 bcrypt — nunca en texto plano.
 
 Roles:
@@ -105,7 +105,7 @@ def require_login() -> dict:
         st.error(
             "Falta la configuración de autenticación. Crea "
             "`.streamlit/secrets.toml` (ver `.streamlit/secrets.toml.example`) "
-            "o configura los secrets en Streamlit Cloud."
+            "o, en producción, `/opt/aly-dashboard/.streamlit/secrets.toml`."
         )
         st.stop()
 

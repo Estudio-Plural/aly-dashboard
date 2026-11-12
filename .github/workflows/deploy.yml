@@ -1,0 +1,66 @@
+name: Deploy
+
+# Despliega el panel en plural-aly (el servidor del bot Aly) en cada push a
+# main, o a mano desde la pestaña Actions.
+#
+# Corre en un runner propio instalado EN el servidor (label `aly-dashboard`,
+# usuario `aly-deploy`, del grupo docker y dueño de /opt/aly-dashboard). Así no
+# hay que abrir SSH a GitHub ni guardar llaves en el repo: el runner sale hacia
+# GitHub, nadie entra.
+#
+# ⚠️ Un runner propio solo es seguro en un repo PRIVADO. En uno público, un PR
+# desde un fork podría correr código en el servidor del bot.
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-aly-dashboard
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, aly-dashboard]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Copiar al directorio del servicio
+        # Los excludes de secretos hacen que .env y secrets.toml sobrevivan al
+        # --delete: rsync no borra en el destino lo que está excluido.
+        run: |
+          rsync -a --delete \
+            --exclude '.git' \
+            --exclude '.env' \
+            --exclude '.streamlit/secrets.toml' \
+            ./ /opt/aly-dashboard/
+
+      - name: Levantar con Docker Compose
+        working-directory: /opt/aly-dashboard
+        run: |
+          docker compose -p aly-dashboard up -d --build
+          # Si cambió el Caddyfile, `up` no reinicia Caddy (su contenedor no
+          # cambió); reload aplica la config nueva sin cortar conexiones.
+          docker exec aly-dashboard-caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
+          # Solo las imágenes viejas de este proyecto, nada del bot.
+          docker image prune -f --filter label=com.docker.compose.project=aly-dashboard
+
+      - name: Verificar que el panel respondió
+        run: |
+          for i in $(seq 1 20); do
+            if curl -fsS --max-time 5 \
+                 --resolve aly-panel.estudio-plural.co:443:127.0.0.1 \
+                 https://aly-panel.estudio-plural.co/_stcore/health >/dev/null; then
+              echo "✅ el panel responde por HTTPS"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "❌ El panel no respondió por HTTPS en 60s"
+          docker logs --tail=50 aly-dashboard
+          docker logs --tail=30 aly-dashboard-caddy
+          exit 1
