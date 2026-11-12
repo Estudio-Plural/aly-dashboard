@@ -15,7 +15,7 @@ Un ``bot_id`` que aparezca en la DB y no esté acá cae a ``DEFAULT_BOT_META``
 asume geografía que no conoce.
 """
 
-DEFAULT_BOT_META = {"label": None, "geo": None}
+DEFAULT_BOT_META = {"label": None, "geo": None, "weekly_deidentified": False}
 
 BOTS = {
     "apapachar": {
@@ -29,6 +29,10 @@ BOTS = {
         # define lista de regiones, así que no tiene mapa todavía.
         "label": "Semillas · México",
         "geo": None,
+        # Su Excel de los lunes va sin identificar, con el mismo ID seudónimo que
+        # la exportación (``Audience.deidentify`` en aly-weekly-report). Si se
+        # prende allá para otro bot, prenderlo acá también.
+        "weekly_deidentified": True,
     },
     "demo": {
         "label": "Demo · Equimundo",
@@ -50,3 +54,8 @@ def bot_label(bot_id: str) -> str:
 def bot_geo(bot_id: str):
     """Mapa geográfico aplicable ('colombia' | None)."""
     return bot_meta(bot_id).get("geo")
+
+
+def bot_weekly_deidentified(bot_id: str) -> bool:
+    """Si el Excel de los lunes de este bot lleva el mismo ID seudónimo que la exportación."""
+    return bool(bot_meta(bot_id).get("weekly_deidentified"))

@@ -128,8 +128,8 @@ Aly_dashboard/
 │   └── secrets.toml.example    # Plantilla commiteada del secrets.toml
 ├── app.py                      # Entry point — auth gate (require_login), st.navigation (position="hidden"), CSS, render_sidebar() + render_topbar()
 ├── pages/
-│   ├── overview.py             # Inicio: hero banner, 4 KPIs con sparkline + caption explicativo, growth chart + stat_list (peak hour/day, grid 2:1), heatmap bloques. La gráfica de actividad rellena días sin datos con 0, fija el eje X al rango y desactiva el zoom de Plotly (ver Convenciones)
-│   ├── usuarios.py             # Demografía: 3 KPIs (users, regiones, msg/usuario). Layout **según `bot_geo()`**: bots con mapa (apapachar) → 2:1 choropleth Colombia + cobertura + ranking top 10; bots sin mapa (mexico, demo) → ranking top 15 a ancho completo
+│   ├── overview.py             # Inicio: hero banner, 4 KPIs con sparkline + caption explicativo, growth chart + stat_list (peak hour/day, grid 2:1), usuarios activos por semana + «Indicadores de seguimiento» (registrados acumulados, nuevos en el período, volvieron en 2+ semanas, % respondidas con el material; grid 2:1, desde 2026-11-11 para el M&E de México), heatmap bloques. La gráfica de actividad rellena días sin datos con 0, fija el eje X al rango y desactiva el zoom de Plotly (ver Convenciones)
+│   ├── usuarios.py             # Demografía: 3 KPIs (users, regiones, msg/usuario). Layout **según `bot_geo()`**: bots con mapa (apapachar) → 2:1 choropleth Colombia + cobertura + ranking top 10; bots sin mapa (mexico, demo) → ranking top 15 a ancho completo. Al final, **Exportación sin identificar** (botón de Excel, ver sección propia)
 │   ├── conversaciones.py       # Keywords + resúmenes (no está en nav, en standby)
 │   ├── alertas.py              # Flags 🔴/🟠 (HIGH-/MEDIUM-), export Excel con transcripción, "marcar revisado" persistido en Supabase (reviewed_at)
 │   └── leaderboard.py          # Top usuarios: podio, bar top 10, tabla top 20 con Flags 🚩, drill-down con tabs (header muestra teléfono completo del usuario)
@@ -141,7 +141,9 @@ Aly_dashboard/
 │   └── colombia_departments.geojson  # GeoJSON bundled (33 deptos, featureidkey="properties.NOMBRE_DPT")
 ├── utils/
 │   ├── auth.py                 # require_login(): login streamlit-authenticator + resolución rol→bots + logout
-│   ├── bots.py                 # Registro bot_id → {label, geo}: nombre legible para la UI + qué mapa aplica
+│   ├── bots.py                 # Registro bot_id → {label, geo, weekly_deidentified}: nombre legible, qué mapa aplica y si su Excel de los lunes va sin identificar
+│   ├── export.py               # Excel de la exportación sin identificar (hojas Cómo leer / Mensajes / Conversaciones / Registros) + chequeo de que no quede ningún identificador crudo
+│   ├── pseudonym.py            # IDs seudónimos D-…/C-… con HMAC y PSEUDONYM_KEY — mismo algoritmo que aly-weekly-report
 │   ├── db.py                   # Todas las queries SQL
 │   ├── i18n.py                 # Traducciones ES/EN via t("key")
 │   ├── styles.py               # CSS global + COLORS dict + helpers: page_header, hero_banner, card_header, stat_list, arc_row, section_label
@@ -163,7 +165,7 @@ Aly_dashboard/
 |---|---|
 | `public.users_interactions` | `conversation_id`, `client_number`, `role`, `message`, `timestamp`, `status`, `created_at` |
 | `public.users_data` | `number`, `name`, `country`, `gender`, `region`, `email`, `created_at` |
-| `public.conversations_data` | `conversation_id`, `user_number`, `conversation_date`, `summary`, `keywords`, `flags`, `session`, `reviewed_at` (TIMESTAMPTZ — null si pendiente) |
+| `public.conversations_data` | `id` (PK), `conversation_id`, `user_number`, `conversation_date` (**timestamp SIN zona, guardado en UTC**), `summary`, `keywords`, `flags`, `flag_severity` (enum limpio: HIGH / MEDIUM / LOW / Operacional), `flag_reasoning` (texto libre), `messages_count`, `session`, `reviewed_at` (TIMESTAMPTZ — null si pendiente) |
 | `vector_aly.rag_embeddings` | `project`, `document_name`, `topics`, `entities`, `key_phrases`, `chunk_index` |
 
 ---
@@ -177,6 +179,10 @@ Todas las queries de tiempo convierten a **GMT-5 (`America/Bogota`)** vía `AT T
 - `execute(query, params)` → rowcount (escrituras INSERT/UPDATE/DELETE)
 - `get_user_kpis(from, to)` → dict n_users, n_sessions
 - `get_messages_count(from, to)` → int
+- `get_registered_users(from, to)` → dict total (acumulado al cierre del rango) / nuevos (primera fila dentro del rango). Cuenta por `number` y su primera fila: `users_data` no tiene UNIQUE y tiene duplicados. En México la fila nace al aceptar el aviso de privacidad
+- `get_returning_users(from, to)` → dict activos / vuelven (escribieron, `role='user'`, en 2+ semanas distintas de lunes a domingo, hora local)
+- `get_answer_coverage(from, to)` → dict preguntas / sin_info. Pregunta = mensaje `role='user'` que no es puramente social (`_SOCIAL_MSG_RE`: saludos, gracias, despedidas, respuesta al aviso). Cada una se empareja con el mensaje siguiente de su conversación (LEAD sobre toda la tabla, antes de filtrar el rango); `sin_info` = la respuesta abre con «No tengo esa información» / «I don't have that» (`_NO_INFO_RE`, la frase FACTUAL de los tres bots en el repo Aly). **Si el bot cambia esa frase, actualizar `_NO_INFO_RE`** o el % sube en falso
+- `get_weekly_active_users(from, to)` → df week/users (`role='user'`, semana lunes a domingo en GMT-5). La página rellena semanas vacías con 0
 - `get_hourly_distribution(from, to)` → df hour/messages (hora en GMT-5; no se usa actualmente en UI — disponible)
 - `get_users_by_country/gender/region(from, to)` → df
 - `get_daily_activity(from, to)` → df day/messages/users/**sessions** (day en GMT-5; sessions se usa para sparklines de Inicio)
@@ -190,6 +196,7 @@ Todas las queries de tiempo convierten a **GMT-5 (`America/Bogota`)** vía `AT T
 - `unmark_flag_reviewed(row_id)` → UPDATE … SET reviewed_at = NULL **WHERE id**
 - `get_flag_counts_by_user(from, to)` → df user_number/n_flags (solo HIGH-/MEDIUM-)
 - `get_leaderboard(from, to, limit)` → df top usuarios (last_seen / days_active en GMT-5)
+- `get_pseudonymous_export_data(from, to)` → dict de 3 df **con número y conversation_id crudos** (messages / conversations / registrations) para `utils/export.py`, que es lo único que debe llamarla. `messages` reusa `_MSGS_WITH_REPLY_CTE` (la misma CTE de `get_answer_coverage`, así que el % sale igual); `conversations` lee `flag_severity` y ancla `conversation_date` a UTC antes de pasarla a GMT-5
 - `get_interactions_export(from, to)` → df para Excel export de interacciones (queda disponible aunque ya no se exponga en sidebar)
 - `get_messages_by_conversation_ids(conv_ids)` → df mensajes para lista de conversation_ids
 - `get_user_conversations(user_number, from, to, lang="es")` → df conversaciones de un usuario (drill-down)
@@ -261,6 +268,17 @@ una fila debe traer y usar `id`. `conversation_id` sirve para mostrar y para cru
 
 ---
 
+## Exportación sin identificar (desde 2026-11-11)
+Pedido de Rachel para el M&E de Semillas: ID seudónimo, fecha/hora y alerta de riesgo, sin teléfono ni nombre, para que calculen sus propias cifras. Vive al final de **Usuarios** (`st.download_button`, cacheado 10 min por bot + rango + idioma) y sirve a todos los bots.
+
+- **Hojas**: «Cómo leer» (definiciones; la versión de México aclara que la hora del centro de México es GMT-6), «Mensajes» (un mensaje `role='user'` por fila: ID, ID conversación, fecha y hora, semana, Pregunta / Saludo o cierre, cómo respondió Aly), «Conversaciones» (una por fila: alerta Alta/Media/Baja/Ninguna desde `flag_severity` + las etiquetas `HIGH-/MEDIUM-/LOW-` sin prefijo), «Registros» (primera fila de `users_data` por número, acumulado hasta el cierre del rango).
+- **No lleva** teléfono, nombre, texto de mensajes, `summary` ni `flag_reasoning`. `build_excel()` revisa antes de devolver que ninguna celda sea un número o `conversation_id` crudo (y que ningún identificador de 10+ caracteres aparezca adentro de una celda); si pasa, falla en vez de entregar el archivo.
+- **IDs**: `D-` + 8 hex de HMAC-SHA256(`PSEUDONYM_KEY`, número). **Tiene que coincidir con `src/pseudonym.py` de aly-weekly-report**, que pone el mismo ID en el Excel de los lunes de México. Las conversaciones llevan `C-` + HMAC de `conv:<número>:<conversation_id>`, porque el `conversation_id` empieza con el teléfono.
+- **Llave**: `PSEUDONYM_KEY` en los secrets de Cloud **como clave de primer nivel** (arriba de `[cookie]`; Streamlit la expone también como variable de entorno) y en `.env` en local. Es la misma del secret del reporte semanal; copia en `~/Dev/_backups_aly/aly-weekly-report.env`. Si se pierde, los IDs cambian. Sin llave la sección no ofrece el botón (al admin le dice qué falta).
+- **Verificado el 2026-11-11** contra las queries del dashboard en los tres bots: activos, los que vuelven, activos por semana, preguntas, «sin información», registrados y alertas Alta/Media recalculados desde el Excel coinciden; los IDs coinciden con los del reporte semanal; cero celdas con teléfono, nombre o `conversation_id`.
+
+---
+
 ## Clasificación de flags
 El campo `flags` en `conversations_data` es un string CSV con múltiples flags por conversación, cada una con prefijo de severidad:
 - `HIGH-<razón>` → 🔴 rojo (crítico)
@@ -288,7 +306,7 @@ La lógica de clasificación vive en `_classify_flag()` en `pages/alertas.py`. T
 
 ## Proyecto Complementario: Aly_Apapachar
 
-**Ubicación**: `/Users/daniel/Documents/Dev/Aly_Apapachar/`
+**Ubicación**: `/Users/daniel/Dev/Aly_Apapachar/`
 
 Aly_Apapachar es el bot WhatsApp (LangGraph + MongoDB + Twilio) que **genera los datos** que este dashboard visualiza.
 
@@ -311,13 +329,13 @@ Aly_Apapachar (bot) → Conversation Closer → Supabase → este dashboard
 | `vector_aly.rag_embeddings` | scripts de ingest |
 
 ### Otros escritores (ruido conocido)
-`aly-evals` (repo hermano en `~/Documents/Dev/aly-evals/`) corre benchmarks contra el bot y termina escribiendo cientos de filas sentinel (`client_number IN ('eval','verify','smoke',…)`, `conversation_id LIKE 'eval-%' / 'verify-%' / 'debug-%' / …`). El filtro en `_date_filter()` las excluye automáticamente del dashboard. Antes del filtro (commit `d981c15`, 2026-05-27), `eval` solo aportaba 458 conversaciones / 918 mensajes.
+`aly-evals` (repo hermano en `~/Dev/aly-evals/`) corre benchmarks contra el bot y termina escribiendo cientos de filas sentinel (`client_number IN ('eval','verify','smoke',…)`, `conversation_id LIKE 'eval-%' / 'verify-%' / 'debug-%' / …`). El filtro en `_date_filter()` las excluye automáticamente del dashboard. Antes del filtro (commit `d981c15`, 2026-05-27), `eval` solo aportaba 458 conversaciones / 918 mensajes.
 
 ---
 
 ## Deployment
 - **Local**: `python3 -m streamlit run app.py`
-- **Producción**: Streamlit Cloud (share.streamlit.io) — secret necesario: `DATABASE_URL`
+- **Producción**: Streamlit Cloud (share.streamlit.io) — secrets: `DATABASE_URL`, `PSEUDONYM_KEY` (ambos de primer nivel) + `[cookie]`, `[credentials]`, `[roles]`
 - **URL**: https://aly-dashboard-pejmrmpdvh8wqefx2ibnzj.streamlit.app/
 - Auto-redeploy al hacer push a `main`
 - **Gotcha**: al agregar un símbolo nuevo a un módulo ya importado (ej. una función nueva en `components/filters.py`), el hot-reload puede fallar con `ImportError` por caché de `sys.modules`. Solución: **Reboot app** desde Manage app en Streamlit Cloud (no requiere cambio de código).

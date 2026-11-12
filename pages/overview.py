@@ -81,6 +81,10 @@ try:
     df_daily = db.get_daily_activity(date_from, date_to, bot_id=bot_id)
     df_flags = db.get_flags_data(date_from, date_to, bot_id=bot_id)
     df_heat  = db.get_activity_heatmap(date_from, date_to, bot_id=bot_id)
+    reg      = db.get_registered_users(date_from, date_to, bot_id=bot_id)
+    ret      = db.get_returning_users(date_from, date_to, bot_id=bot_id)
+    df_week  = db.get_weekly_active_users(date_from, date_to, bot_id=bot_id)
+    cov      = db.get_answer_coverage(date_from, date_to, bot_id=bot_id)
 except Exception as e:
     st.error(f"Error de base de datos: {e}")
     st.stop()
@@ -287,6 +291,69 @@ with col_stats:
         {"label": t("peak_hour"), "value": peak_hour_txt},
         {"label": t("peak_day"),  "value": peak_day_txt},
     ])
+
+st.markdown("<div style='margin:1.2rem 0 0.25rem'></div>", unsafe_allow_html=True)
+
+
+# ── Usuarios activos por semana + registro y retorno (2/3 + 1/3) ─────────────
+# Semanas de lunes a domingo; las que no tienen actividad van en 0 para que el
+# rango elegido se vea completo (misma convención que la actividad diaria).
+col_week, col_ret = st.columns([2, 1])
+
+with col_week:
+    card_header(
+        title=t("weekly_active_title"),
+        subtitle=t("weekly_active_sub"),
+        icon_svg=KPI_ICONS["users"],
+    )
+    d_last = pd.Timestamp(date_to) - pd.Timedelta(days=1)  # date_to llega exclusivo
+    first_monday = pd.Timestamp(date_from) - pd.Timedelta(days=pd.Timestamp(date_from).weekday())
+    weeks = pd.date_range(start=first_monday, end=d_last, freq="W-MON")
+    if df_week.empty:
+        df_week = pd.DataFrame({"week": weeks, "users": 0})
+    else:
+        df_week["week"] = pd.to_datetime(df_week["week"])
+        df_week = (
+            df_week.set_index("week")
+            .reindex(weeks, fill_value=0)
+            .rename_axis("week")
+            .reset_index()
+        )
+
+    if int(df_week["users"].sum()) == 0:
+        st.info(t("no_data"))
+    else:
+        fig_w = go.Figure(go.Bar(
+            x=df_week["week"],
+            y=df_week["users"],
+            marker_color=COLORS["accent"],
+            hovertemplate=t("hover_week") + " %{x|%d %b}<br><b>%{y}</b> "
+                          + t("hover_users") + "<extra></extra>",
+        ))
+        fig_w.update_layout(**_chart_layout(height=260, bargap=0.35))
+        fig_w.update_xaxes(tickformat="%d %b", fixedrange=True)
+        # Con pocos usuarios Plotly pone ticks fraccionarios y ",d" los repite
+        # (0, 1, 1, 2, 2…): de a uno mientras el máximo sea chico.
+        y_dtick = 1 if int(df_week["users"].max()) <= 8 else None
+        fig_w.update_yaxes(fixedrange=True, rangemode="tozero", tickformat=",d", dtick=y_dtick)
+        st.plotly_chart(fig_w, use_container_width=True, config={"displayModeBar": False})
+        st.caption(t("weekly_partial_note"))
+
+with col_ret:
+    n_answered = cov["preguntas"] - cov["sin_info"]
+    answered_txt = (
+        f"{round(100 * n_answered / cov['preguntas'])} % · {n_answered:,} {t('of')} {cov['preguntas']:,}"
+        if cov["preguntas"] else "—"
+    )
+    card_header(title=t("retention_title"), icon_svg=KPI_ICONS["users"])
+    stat_list([
+        {"label": t("registered_total"), "value": f"{reg['total']:,}"},
+        {"label": t("registered_new"),   "value": f"{reg['nuevos']:,}"},
+        {"label": t("returning_users"),
+         "value": f"{ret['vuelven']:,} {t('of')} {ret['activos']:,}"},
+        {"label": t("answered_share"), "value": answered_txt},
+    ])
+    st.caption(t("retention_note") + " " + t("answered_note"))
 
 st.markdown("<div style='margin:1.2rem 0 0.25rem'></div>", unsafe_allow_html=True)
 
