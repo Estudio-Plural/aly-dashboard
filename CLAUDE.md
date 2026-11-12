@@ -133,16 +133,16 @@ Aly_dashboard/
 │   ├── config.toml             # Tema Streamlit
 │   ├── secrets.toml            # Auth: credenciales + roles (GITIGNORED — no commitear)
 │   └── secrets.toml.example    # Plantilla commiteada del secrets.toml
-├── app.py                      # Entry point — auth gate (require_login), st.navigation (position="hidden"), CSS, render_sidebar() + render_topbar()
+├── app.py                      # Entry point — auth gate (require_login), st.navigation (position="hidden"), CSS, render_sidebar(). `initial_sidebar_state="auto"` (cerrada en el celular)
 ├── views/
-│   ├── overview.py             # Inicio: hero banner, 4 KPIs con sparkline + caption explicativo, growth chart + stat_list (peak hour/day, grid 2:1), usuarios activos por semana + «Indicadores de seguimiento» (registrados acumulados, nuevos en el período, volvieron en 2+ semanas, % respondidas con el material; grid 2:1, desde 2026-11-11 para el M&E de México), heatmap bloques. La gráfica de actividad rellena días sin datos con 0, fija el eje X al rango y desactiva el zoom de Plotly (ver Convenciones)
-│   ├── usuarios.py             # Demografía: 3 KPIs (users, regiones, msg/usuario). Layout **según `bot_geo()`**: bots con mapa (apapachar) → 2:1 choropleth Colombia + cobertura + ranking top 10; bots sin mapa (mexico, demo) → ranking top 15 a ancho completo. Al final, **Exportación sin identificar** (botón de Excel, ver sección propia)
+│   ├── overview.py             # Inicio (desde 2026-11-12): H1 = programa (`bot_label`), franja de estado (alertas sin revisar + último mensaje recibido), 4 KPIs de seguimiento (personas activas con diferencia vs. período anterior, volvieron en 2+ semanas, % respondidas con el material, alertas sin revisar), actividad diaria en barras de un solo eje + «Volumen del período», usuarios activos por semana (eje por lunes, «Sem. 12 oct») + «Registro», y el horario de uso (heatmap) plegado en un expander. La gráfica diaria rellena días sin datos con 0, fija el eje X al rango y desactiva el zoom (ver Convenciones)
+│   ├── usuarios.py             # Demografía: 3 KPIs (personas activas, departamentos con usuarios «6 de 33» o regiones, nuevos registros). Las regiones se muestran sin el prefijo «Regional » (`display_region`) y agrupadas. Layout **según `bot_geo()`**: bots con mapa (apapachar) → 2:1 choropleth Colombia + ranking top 10; bots sin mapa (mexico, demo) → ranking top 15 a ancho completo. Al final, **Exportación sin identificar** (botón de Excel, ver sección propia)
 │   ├── conversaciones.py       # Keywords + resúmenes (no está en nav, en standby)
-│   ├── alertas.py              # Flags 🔴/🟠 (HIGH-/MEDIUM-), export Excel con transcripción, "marcar revisado" persistido en Supabase (reviewed_at)
-│   └── leaderboard.py          # Top usuarios: podio, bar top 10, tabla top 20 con Flags 🚩, drill-down con tabs (header muestra teléfono completo del usuario)
+│   ├── alertas.py              # Flags 🔴/🟠 (HIGH-/MEDIUM-). KPIs = lo que falta (rojas/naranjas SIN REVISAR, revisadas). Cada alerta es un expander (fecha GMT-5, usuario enmascarado, estado) con «marcar revisado» persistido en Supabase (reviewed_at); sin tabla ni conversation_id en pantalla (empieza con el teléfono). En cero: «sin alertas entre X e Y» + la última alerta del programa (`get_last_flag`). Export Excel con transcripción y teléfono completo (a propósito)
+│   └── leaderboard.py          # «Conversaciones» en la nav (el archivo conserva el nombre por la URL /leaderboard). Tabla de las personas del período (hasta 200) + selector «Ver las conversaciones de…» (la casilla de la tabla también sirve); el detalle va en una tarjeta con tabs Resúmenes / Transcripciones / Nube (header con teléfono completo, a propósito). Sin podio ni top 10 (desde 2026-11-12)
 ├── components/
-│   ├── filters.py              # render_sidebar() (logo Aly, nav custom Material icons, bot selector role-aware, date pickers + presets 7d/30d con on_click callbacks, "conectado como" + logout) + render_topbar() (selector de idioma ES/EN arriba a la derecha). get_filters() lee session_state. Sin export — descarga vive en Alertas
-│   ├── kpi_row.py              # KPI cards HTML custom: accent bar + icon + sparkline SVG + delta pill. ICONS dict reutilizable
+│   ├── filters.py              # render_sidebar() (logo Aly, nav custom Material icons, bot selector role-aware, date pickers + presets 7d/30d/90d con on_click callbacks, "conectado como" + idioma ES/EN + logout). get_filters() lee session_state. Sin export — descarga vive en Alertas
+│   ├── kpi_row.py              # KPI cards HTML custom: accent bar + icon + caption + diferencia vs. período anterior (en absoluto) + sparkline opcional. Misma altura vía st.container(key="kpis"). ICONS dict reutilizable
 │   └── charts.py               # Fábrica Plotly: bar_h, donut, bar_v, choropleth (silueta flat + dots), choropleth_colombia (departamentos con aliases)
 ├── data/
 │   └── colombia_departments.geojson  # GeoJSON bundled (33 deptos, featureidkey="properties.NOMBRE_DPT")
@@ -154,7 +154,7 @@ Aly_dashboard/
 │   ├── pseudonym.py            # IDs seudónimos D-…/C-… con HMAC y PSEUDONYM_KEY — mismo algoritmo que aly-weekly-report
 │   ├── db.py                   # Todas las queries SQL
 │   ├── i18n.py                 # Traducciones ES/EN via t("key")
-│   ├── styles.py               # CSS global + COLORS dict + helpers: page_header, hero_banner, card_header, stat_list, arc_row, section_label
+│   ├── styles.py               # CSS global + COLORS dict + helpers: page_header, card (tarjeta con header adentro), note, status_strip, card_header, stat_list, arc_row, section_label (hero_banner queda sin uso)
 │   └── translate.py            # Traducción de keywords (usada en leaderboard)
 └── requirements.txt
 ```
@@ -164,9 +164,9 @@ Aly_dashboard/
 ## Navegación
 
 > ⚠️ **Las páginas viven en `views/`, NUNCA en `pages/`** (desde 2026-11-12). Con una carpeta `pages/`, Streamlit la toma como multipágina clásica: mientras la sesión no llega a `st.navigation` (y sin login no llega, porque `require_login()` hace `st.stop()` antes), abrir `/alertas` o `/leaderboard` directamente **corre esa página sin pasar por `app.py` ni por el login**. Pasó en producción (y en Streamlit Cloud) hasta el 2026-11-12: cualquiera con el link veía alertas, transcripciones y teléfonos. Para comprobarlo: servidor recién arrancado, ventana privada, abrir `/<página>` y verificar que pide login.
-`st.navigation(pages, position="hidden")` oculta la nav nativa; la real se renderiza en `_render_nav()` (components/filters.py) con `st.page_link` + Material Symbols (`:material/dashboard:`, `:material/group:`, `:material/warning:`, `:material/emoji_events:`) agrupados en secciones **ANÁLISIS** (Inicio, Usuarios) y **OPERACIÓN** (Alertas, Leaderboard). La página `conversaciones.py` existe pero no está en `NAV_ITEMS` ni en `app.py:pages`.
+`st.navigation(pages, position="hidden")` oculta la nav nativa; la real se renderiza en `_render_nav()` (components/filters.py) con `st.page_link` + Material Symbols (`:material/dashboard:`, `:material/group:`, `:material/forum:`, `:material/warning:`) agrupados en secciones **ANÁLISIS** (Inicio, Usuarios, Conversaciones) y **OPERACIÓN** (Alertas). La página `conversaciones.py` existe pero no está en `NAV_ITEMS` ni en `app.py:pages`.
 
-**Selector de idioma**: vive en `render_topbar()` (no en el sidebar) — un `st.segmented_control(["ES","EN"], key="lang_seg")` alineado a la derecha del área principal, renderizado en `app.py` antes de `pg.run()` para que aparezca en todas las páginas. Su `on_change` escribe `st.session_state.lang`. CSS: `.topbar-lang` + override compacto de `[data-testid="stSegmentedControl"]` en `utils/styles.py`.
+**Selector de idioma**: en el sidebar, bajo «Conectado como» (`_render_language()` en filters.py; desde 2026-11-12, antes ocupaba una franja arriba de cada página). `st.segmented_control(["ES","EN"], key="lang_seg")`; su `on_change` escribe `st.session_state.lang` y repone la opción si se vuelve a tocar la elegida (el control deja `None`).
 
 ---
 
@@ -181,6 +181,8 @@ Aly_dashboard/
 ---
 
 ## Queries en db.py
+**Caché**: `fetch_df` pasa por `_fetch_cached` (`st.cache_data`, 120 s, clave = query + params, así que el bot y las fechas van dentro y un rol nunca ve datos de otro). `execute()` vacía la caché después de escribir, para que «marcar revisado» se vea en el rerun. Sin caché cada clic repetía ~15 queries a Supabase.
+
 Todas las queries de tiempo convierten a **GMT-5 (`America/Bogota`)** vía `AT TIME ZONE` antes de filtrar/extraer hora. Constante `TZ` arriba del módulo.
 
 `_date_filter()` además excluye **siempre** cuentas de testing/eval que vienen del repo hermano `aly-evals` (benchmarks, smoke tests, verify, debug). Las listas viven al inicio de `utils/db.py`: `_TEST_CLIENT_NUMBERS`, `_TEST_CLIENT_LIKE`, `_TEST_CONV_LIKE`. Si aly-evals agrega un nuevo prefijo sentinel, sumarlo a la tupla correspondiente. Queries sobre `conversations_data` pasan `client_col="user_number"`; queries con alias pasan nombres calificados (`client_col="ui.client_number"`). Los drill-downs por usuario explícito apagan el filtro con `client_col=None, conv_col=None`.
@@ -195,7 +197,7 @@ Todas las queries de tiempo convierten a **GMT-5 (`America/Bogota`)** vía `AT T
 - `get_weekly_active_users(from, to)` → df week/users (`role='user'`, semana lunes a domingo en GMT-5). La página rellena semanas vacías con 0
 - `get_hourly_distribution(from, to)` → df hour/messages (hora en GMT-5; no se usa actualmente en UI — disponible)
 - `get_users_by_country/gender/region(from, to)` → df
-- `get_daily_activity(from, to)` → df day/messages/users/**sessions** (day en GMT-5; sessions se usa para sparklines de Inicio)
+- `get_daily_activity(from, to)` → df day/messages/users/**sessions** (day en GMT-5; Inicio grafica messages y pone users en el hover)
 - `get_activity_heatmap(from, to)` → df dow/hour/messages (en GMT-5)
 - `get_conversation_metrics(from, to)` → dict métricas agregadas (incluye `avg_msg_per_user`)
 - `get_kpi_deltas(from, to)` → dict deltas fraccionales vs período anterior
@@ -205,6 +207,9 @@ Todas las queries de tiempo convierten a **GMT-5 (`America/Bogota`)** vía `AT T
 - `mark_flag_reviewed(row_id)` → UPDATE … SET reviewed_at = NOW() **WHERE id** (ver *Identidad de fila*)
 - `unmark_flag_reviewed(row_id)` → UPDATE … SET reviewed_at = NULL **WHERE id**
 - `get_flag_counts_by_user(from, to)` → df user_number/n_flags (solo HIGH-/MEDIUM-)
+- `get_last_activity(bot_id)` → `pd.Timestamp` (GMT-5) del último mensaje del bot, sin filtro de fechas (para «último mensaje recibido»)
+- `get_last_flag(bot_id)` → dict con la última alerta roja/naranja del programa (fecha GMT-5, severidad, reviewed_at), sin filtro de fechas
+- `get_kpi_deltas` también devuelve `users_prev` / `sessions_prev` / `messages_prev`
 - `get_leaderboard(from, to, limit)` → df top usuarios (last_seen / days_active en GMT-5)
 - `get_pseudonymous_export_data(from, to)` → dict de 3 df **con número y conversation_id crudos** (messages / conversations / registrations) para `utils/export.py`, que es lo único que debe llamarla. `messages` reusa `_MSGS_WITH_REPLY_CTE` (la misma CTE de `get_answer_coverage`, así que el % sale igual); `conversations` lee `flag_severity` y ancla `conversation_date` a UTC antes de pasarla a GMT-5
 - `get_interactions_export(from, to)` → df para Excel export de interacciones (queda disponible aunque ya no se exponga en sidebar)
@@ -221,15 +226,19 @@ El bot (`Aly_Apapachar`) escribe en `conversations_data` dos columnas JSONB extr
 
 ## Componentes reutilizables (utils/styles.py)
 - `page_header(title, subtitle="", show_period=True)` — H1 + subtítulo + chip de período (auto desde session_state).
-- `hero_banner(headline_html, status_text, status_kind, meta_label, meta_value)` — banner gradient con status pill (`ok`/`warn`/`crit`) y número destacado a la derecha. Usa `<b>` dentro del headline para números grandes.
-- `card_header(title, subtitle="", icon_svg="", right_text="")` — header estándar sobre charts/tablas. Reemplaza al viejo `section_label` (que existe pero está legacy).
+- `card(key, title, subtitle="", icon_svg="", right_text="")` — **context manager**: `st.container(border=True, key="card-<key>")` con el header ADENTRO. Toda gráfica, tabla o stat_list va en una. `key` único por página (es la clase CSS `st-key-card-<key>`; la clase st-key es la forma documentada de estilar un contenedor).
+- `note(text)` — nota legible bajo una gráfica o un KPI. **Usar en vez de `st.caption`**, que sale al 60 % de opacidad. Acepta `<b>`.
+- `status_strip(pill_text, pill_kind, items=[(label, value)])` — franja de estado de Inicio (píldora ok/warn/crit + pares etiqueta-valor).
+- `card_header(title, subtitle="", icon_svg="", right_text="")` — el header que usa `card()`. Reemplaza al viejo `section_label` (que existe pero está legacy).
+- `hero_banner(...)` — sin uso desde 2026-11-12 (Inicio usa `status_strip`).
 - `stat_list(items=[{label, value}])` — card vertical compacto tipo sidebar stats.
 - `arc_row(items=[{label, pct, value?, accent?}])` — fila de gauges SVG 3/4 (0-100%), label arriba, value dentro del arco.
 - `section_label(text)` — legacy, evitar en páginas nuevas.
 
 ## KPI cards (components/kpi_row.py)
 `render(metrics: list[dict])`. Cada dict:
-- `label`, `value`, `delta` (fracción o None), `delta_label`, `prefix`, `suffix`
+- `label`, `value`, `delta_label`, `prefix`, `suffix`
+- `prev`: valor del período anterior → muestra la **diferencia en absoluto** en gris («−7 · vs. 13 en el período anterior»); se omite si `prev < 10`. Con pocas personas un % en rojo («−53,8 %») asustaba de más; el rojo/naranja queda para alertas. `delta` (fracción) es el formato viejo, sin uso.
 - `accent`: color key de COLORS (`accent` | `navy` | `positive` | `yellow` | `red`) — pinta la barra izquierda y los dots del sparkline
 - `icon`: key de `kpi_row.ICONS` (`users`, `message`, `send`, `chart`, `alert-triangle`, `alert-circle`, `flag`, `activity`)
 - `spark`: lista de valores para sparkline SVG inline (opcional)
@@ -295,13 +304,16 @@ El campo `flags` en `conversations_data` es un string CSV con múltiples flags p
 - `MEDIUM-<razón>` → 🟠 naranja (advertencia)
 - `LOW-<razón>` → ignorado en UI (no se muestra)
 
-La lógica de clasificación vive en `_classify_flag()` en `views/alertas.py`. También se replica en `views/overview.py` (para el status del hero banner) y `views/leaderboard.py` (para contar flags por usuario).
+La lógica de clasificación vive en `_classify_flag()` en `views/alertas.py`. También se replica en `views/overview.py` (para la franja de estado y el KPI de alertas sin revisar) y `views/leaderboard.py` (para contar flags por usuario).
 
 **Si el bot cambia el formato de estos campos, actualizar `_classify_flag()` en los 3 archivos.**
 
 ---
 
 ## Estilo visual
+- **Texto**: `text_secondary` `#374151` y `text_muted` `#4B5563` (desde 2026-11-12; antes `#6B7280`/`#9CA3AF`, se leían lavados). Nada más claro que `text_muted` para texto.
+- **⚠️ CSS de `inject()`**: nada de `<` seguido de letra adentro del `<style>`, ni en comentarios. El sanitizador de `st.html` lo toma por una etiqueta y descarta TODO el CSS sin avisar (pasó con un comentario que decía `st-key-<key>`).
+- **Conteos en gráficas**: siempre enteros (`tickformat=",d"`, `dtick=1` si el máximo ≤ 8, `rangemode="tozero"`) y, si son pocas barras, la cifra encima. Un solo eje Y; nada de `shape="spline"` en conteos (inventa valores entre días).
 - **Fuentes**: Oswald (títulos, valores KPI, hero number) · Open Sans (body, labels, captions) · Material Symbols Rounded (íconos de nav) — Google Fonts
 - **Sidebar**: claro `#FFFFFF` con borde gris, logo con cuadrado gradient (azul→navy) + wordmark "Aly"
 - **Cards / fondo contenedores**: blanco `#FFFFFF`

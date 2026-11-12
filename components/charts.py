@@ -54,10 +54,17 @@ def bar_h(df: pd.DataFrame, x: str, y: str, title: str = "",
     )
     fig.update_layout(**_layout(title=title, height=height,
                                 yaxis_categoryorder="total ascending"))
-    fig.update_xaxes(title_text="")
     fig.update_yaxes(title_text="")
+    # Conteos: enteros y con la cifra al final de la barra. Con valores chicos
+    # Plotly ponía el eje en 0 / 0,5 / 1, que no existe para personas.
+    x_max = int(df[x].max()) if len(df) else 0
+    fig.update_xaxes(title_text="", tickformat=",d", rangemode="tozero",
+                     dtick=1 if x_max <= 8 else None, fixedrange=True)
+    fig.update_yaxes(fixedrange=True)
     fig.update_traces(
         marker_line_width=0,
+        text=df[x], textposition="outside", cliponaxis=False,
+        textfont=dict(size=11, color=COLORS["text"]),
         hovertemplate="<b>%{y}</b><br>%{x} usuarios<extra></extra>",
     )
     return fig
@@ -212,6 +219,14 @@ def _normalize_region(s) -> str:
     if s.startswith("regional "):
         s = s[len("regional "):]
     return s.strip()
+
+
+def display_region(s) -> str:
+    """Nombre de región para mostrar: sin el prefijo «Regional » que el
+    onboarding de Apapáchar agrega desde el 2026-07-29 (con tildes y
+    mayúsculas, a diferencia de _normalize_region, que es para comparar)."""
+    s = str(s or "").strip()
+    return s[len("regional "):].strip() if s.lower().startswith("regional ") else s
 
 
 _COLOMBIA_ALIASES = {

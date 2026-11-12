@@ -125,14 +125,39 @@ def _delta_pill(delta, delta_label: str) -> str:
     )
 
 
+def _delta_abs(curr, prev, label: str) -> str:
+    """Diferencia en absoluto contra el período anterior, en gris.
+
+    Con pocas personas un porcentaje engaña: pasar de 13 a 6 es «−53,8 %» en
+    rojo, y en un programa chico eso no es una alarma. Por eso se muestra la
+    diferencia («−7») con la base al lado, en color neutro (el rojo y el
+    naranja quedan para las alertas), y se omite si el período anterior tuvo
+    menos de 10: ahí la comparación es ruido.
+    """
+    if curr is None or prev is None or prev < 10:
+        return ""
+    diff = int(curr) - int(prev)
+    sign = "+" if diff > 0 else ("−" if diff < 0 else "±")
+    return (
+        f'<div class="kpi-card__delta-row">'
+        f'<span class="kpi-card__delta kpi-card__delta--neutral">{sign}{abs(diff):,}</span>'
+        f'<span class="kpi-card__delta-label">{html.escape(label)}</span>'
+        f'</div>'
+    )
+
+
 def render(metrics: list[dict]):
     """Render a row of premium KPI cards.
 
     Each metric dict:
         label       str                — display label (uppercased via CSS)
         value       int | float | str  — the main figure
-        delta       float | None       — fraction, e.g. 0.12 → +12.0%
+        delta       float | None       — fraction, e.g. 0.12 → +12.0% (formato viejo)
         delta_label str                — context label, e.g. "vs período anterior"
+        prev        int | None         — valor del período anterior: si viene, se
+                                         muestra la diferencia en absoluto (ver
+                                         _delta_abs) en vez del %; delta_label
+                                         lleva la base, p. ej. "vs. 13 antes"
         prefix      str                — optional prefix (e.g. "$")
         suffix      str                — optional suffix (e.g. "%")
         accent      str                — color key in COLORS; default "accent"
@@ -140,7 +165,10 @@ def render(metrics: list[dict]):
         spark       list[num] | None   — daily series for the sparkline
         caption     str                — optional one-line explanation under the value
     """
-    cols = st.columns(len(metrics))
+    # key="kpis": el CSS estira las tarjetas a la misma altura (styles.py).
+    # Una sola fila de KPIs por página, así que la key no se repite.
+    with st.container(key="kpis"):
+        cols = st.columns(len(metrics))
     for col, m in zip(cols, metrics):
         with col:
             accent_key = m.get("accent", "accent")
@@ -148,7 +176,10 @@ def render(metrics: list[dict]):
             icon_svg = ICONS.get(m.get("icon") or "", "")
             value_html = _fmt_value(m["value"], m.get("prefix", ""), m.get("suffix", ""))
             spark_html = _sparkline_svg(m.get("spark") or [], accent)
-            delta_html = _delta_pill(m.get("delta"), m.get("delta_label", ""))
+            if "prev" in m:
+                delta_html = _delta_abs(m["value"], m.get("prev"), m.get("delta_label", ""))
+            else:
+                delta_html = _delta_pill(m.get("delta"), m.get("delta_label", ""))
             caption = m.get("caption", "")
             caption_html = (
                 f'<div class="kpi-card__caption">{html.escape(caption)}</div>'

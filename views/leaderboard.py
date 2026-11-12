@@ -1,4 +1,5 @@
-"""Página Leaderboard — usuarios más activos con detalle por usuario."""
+"""Página Conversaciones (antes Leaderboard): las personas del período y, al
+elegir una, sus resúmenes, transcripciones y palabras clave."""
 
 import io
 import json
@@ -6,12 +7,11 @@ import re
 from collections import Counter
 
 import pandas as pd
-import plotly.graph_objects as go
 import streamlit as st
 
 from utils.i18n import t
 from utils import db
-from utils.styles import COLORS, page_header, card_header
+from utils.styles import COLORS, page_header, card, note
 from components.filters import get_filters
 from components.kpi_row import ICONS as KPI_ICONS
 
@@ -23,7 +23,7 @@ lang      = st.session_state.get("lang", "es")
 
 page_header(t("lb_page_title"), t("lb_page_sub"))
 
-df = db.get_leaderboard(date_from, date_to, limit=20, bot_id=bot_id)
+df = db.get_leaderboard(date_from, date_to, limit=200, bot_id=bot_id)
 
 if df.empty:
     st.info(t("lb_no_data"))
@@ -70,157 +70,58 @@ df["display_name"] = df.apply(
 )
 
 
-def _medal(rank):
-    return {1: "🥇", 2: "🥈", 3: "🥉"}.get(rank, str(rank))
-
-
-df["rank_label"] = df.index.map(_medal)
-
-# ── Podium — top 3 ────────────────────────────────────────────────────────────
-card_header(title=t("lb_top_stats"), icon_svg=KPI_ICONS["activity"])
-
-top3 = df.head(3)
-podium_order = [1, 0, 2]  # silver, gold, bronze visual order
-cols = st.columns(3)
-
-for col_idx, df_idx in enumerate(podium_order):
-    if df_idx >= len(top3):
-        continue
-    row   = top3.iloc[df_idx]
-    rank  = df_idx + 1
-    medal = {1: "🥇", 2: "🥈", 3: "🥉"}[rank]
-    accent_colors = {1: COLORS["accent"], 2: COLORS["text_secondary"], 3: COLORS["red"]}
-
-    country_flag = f"&nbsp;{row.get('country', '')}" if pd.notna(row.get("country")) and str(row.get("country", "")).strip() else ""
-
-    with cols[col_idx]:
-        st.markdown(
-            f"""
-            <div style="
-                background:{COLORS['bg_card']};
-                border:1.5px solid {accent_colors[rank]};
-                border-radius:12px;
-                padding:1.25rem 1rem 1rem;
-                text-align:center;
-                box-shadow:0 2px 8px rgba(0,0,0,0.08);
-                min-height:160px;
-            ">
-                <div style="font-size:2rem;line-height:1">{medal}</div>
-                <div style="margin-top:0.5rem;font-family:'Oswald',sans-serif;
-                    font-size:1.5rem;font-weight:600;color:{COLORS['text']};
-                    line-height:1.1">{int(row['total_messages']):,}</div>
-                <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;
-                    letter-spacing:0.08em;color:{COLORS['text_muted']};margin-bottom:0.5rem">
-                    {t('lb_messages')}
-                </div>
-                <div style="font-family:'Open Sans',sans-serif;font-size:0.82rem;
-                    font-weight:600;color:{COLORS['text']};white-space:nowrap;
-                    overflow:hidden;text-overflow:ellipsis">{row['display_name']}{country_flag}</div>
-                <div style="margin-top:0.4rem;font-size:0.75rem;color:{COLORS['text_secondary']}">
-                    {int(row['total_conversations'])} conv · {int(row['days_active'])} días
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-st.markdown("<div style='margin:1.3rem 0 0.25rem'></div>", unsafe_allow_html=True)
-
-# ── Bar chart — top 10 ────────────────────────────────────────────────────────
-card_header(
-    title="Top 10 usuarios",
-    subtitle=t("lb_messages"),
-    icon_svg=KPI_ICONS["chart"],
-)
-top10 = df.head(10).copy()
-top10_sorted = top10.sort_values("total_messages", ascending=True)
-
-bar_colors = [
-    COLORS["accent"] if i == len(top10_sorted) - 1
-    else "#93C5FD" if top10_sorted["total_messages"].iloc[i] >= top10_sorted["total_messages"].max() * 0.5
-    else "#DBEAFE"
-    for i in range(len(top10_sorted))
-]
-
-fig = go.Figure(go.Bar(
-    x=top10_sorted["total_messages"],
-    y=top10_sorted["display_name"],
-    orientation="h",
-    marker_color=bar_colors,
-    marker_line_width=0,
-    text=top10_sorted["total_messages"].apply(lambda v: f"{int(v):,}"),
-    textposition="outside",
-    textfont=dict(size=11, color=COLORS["text_secondary"]),
-    hovertemplate="<b>%{y}</b><br>%{x:,} mensajes<extra></extra>",
-))
-fig.update_layout(
-    paper_bgcolor=COLORS["bg_card"],
-    plot_bgcolor=COLORS["bg_card"],
-    font=dict(family="Open Sans, sans-serif", size=11),
-    height=340,
-    margin=dict(l=8, r=60, t=12, b=8),
-    xaxis=dict(
-        gridcolor="#F3F4F6",
-        linecolor=COLORS["border"],
-        tickfont=dict(size=10, color=COLORS["text_secondary"]),
-        showgrid=True,
-    ),
-    yaxis=dict(
-        linecolor=COLORS["border"],
-        tickfont=dict(size=11, color=COLORS["text"]),
-        automargin=True,
-    ),
-    bargap=0.3,
-    hoverlabel=dict(bgcolor=COLORS["bg_card"], bordercolor=COLORS["border"],
-                    font=dict(family="Open Sans, sans-serif", size=11)),
-)
-st.plotly_chart(fig, use_container_width=True)
-
-st.markdown("<div style='margin:0.5rem 0'></div>", unsafe_allow_html=True)
-
-# ── Full table (interactive) ───────────────────────────────────────────────────
-card_header(
-    title=t("lb_engagement"),
-    subtitle=t("lb_click_hint"),
-    icon_svg=KPI_ICONS["users"],
-)
-
-cols_to_show = ["rank_label", "display_name", "country", "total_messages",
-                "total_conversations", "days_active", "avg_msg_per_conv", "last_seen"]
-if "n_flags" in df.columns:
-    cols_to_show.append("n_flags")
-
+# ── Tabla: todas las personas del período ────────────────────────────────────
+# Antes había un podio y un top 10 en barras encima de la tabla: tres vistas de
+# los mismos números, y el detalle (lo valioso) quedaba al final. Ahora la
+# tabla va primero y el detalle se abre con el selector o con la casilla.
+cols_to_show = ["display_name", "country", "total_messages", "total_conversations",
+                "days_active", "last_seen", "n_flags"]
 display_df = df[cols_to_show].copy()
-
-if "last_seen" in display_df.columns:
-    display_df["last_seen"] = pd.to_datetime(display_df["last_seen"]).dt.strftime("%d/%m/%Y")
-
-col_names = [
-    t("lb_rank"), t("lb_user"), t("lb_country"),
-    t("lb_messages"), t("lb_conversations"), t("lb_days_active"),
-    t("lb_avg_msg"), t("lb_last_seen"),
+display_df["last_seen"] = pd.to_datetime(display_df["last_seen"]).dt.strftime("%d/%m/%Y")
+display_df.columns = [
+    t("lb_user"), t("lb_country"), t("lb_messages"), t("lb_conversations"),
+    t("lb_days_active"), t("lb_last_seen"), t("lb_flags"),
 ]
-if "n_flags" in df.columns:
-    col_names.append(t("lb_flags"))
-display_df.columns = col_names
-
 col_config = {
-    t("lb_messages"):      st.column_config.NumberColumn(format="%d"),
+    t("lb_messages"):      st.column_config.NumberColumn(format="%d", help=t("lb_messages_help")),
     t("lb_conversations"): st.column_config.NumberColumn(format="%d"),
     t("lb_days_active"):   st.column_config.NumberColumn(format="%d"),
-    t("lb_avg_msg"):       st.column_config.NumberColumn(format="%.1f"),
+    t("lb_flags"):         st.column_config.NumberColumn(format="%d"),
 }
-if "n_flags" in df.columns:
-    col_config[t("lb_flags")] = st.column_config.NumberColumn(format="%d")
 
-selection = st.dataframe(
-    display_df,
-    use_container_width=True,
-    hide_index=True,
-    on_select="rerun",
-    selection_mode="single-row",
-    column_config=col_config,
-)
+# La elección se guarda por número y no por posición: al cambiar de fechas la
+# tabla se reordena y una posición apuntaría a otra persona. El número no se
+# muestra (el selector enseña el nombre enmascarado).
+numbers = df["client_number"].astype(str).tolist()
+
+
+def _pick_label(number):
+    r = df.iloc[numbers.index(number)]
+    return f"{r['display_name']} · {int(r['total_messages']):,} {t('hover_messages')}"
+
+
+def _on_table_select():
+    rows = st.session_state["conv_table"].selection.rows
+    st.session_state["conv_pick"] = numbers[rows[0]] if rows else None
+
+
+if st.session_state.get("conv_pick") not in numbers:
+    st.session_state["conv_pick"] = None
+
+with card("personas", t("lb_engagement"), subtitle=t("lb_click_hint"),
+          icon_svg=KPI_ICONS["users"]):
+    st.selectbox(t("lb_pick"), options=numbers, format_func=_pick_label,
+                 key="conv_pick", placeholder=t("lb_pick_none"))
+    st.dataframe(
+        display_df,
+        use_container_width=True,
+        hide_index=True,
+        on_select=_on_table_select,
+        selection_mode="single-row",
+        column_config=col_config,
+        key="conv_table",
+    )
+
 
 # ── User detail panel ─────────────────────────────────────────────────────────
 
@@ -294,9 +195,9 @@ def _render_summaries(df_convs):
         if not summary or summary == "None":
             continue
         has_any = True
-        conv_id = str(row.get("conversation_id", "—"))[:20]
+        # Sin el conversation_id: empieza con el teléfono de la persona.
         fecha   = str(row.get("conversation_date", ""))[:16]
-        label   = f"🗨️  {fecha}  ·  conv `{conv_id}`"
+        label   = f"🗨️  {fecha}"
         with st.expander(label):
             st.html(
                 f'<p style="font-family:\'Open Sans\',sans-serif;font-size:0.875rem;'
@@ -350,39 +251,35 @@ def _render_transcripts_from_msgs(df_msgs):
                 )
 
 
-# ── Render detail panel when a row is selected ────────────────────────────────
-selected_rows = selection.selection.rows
-if selected_rows:
-    pos          = selected_rows[0]
-    user_row     = df.iloc[pos]
+# ── Detalle de la persona elegida ────────────────────────────────────────────
+pick = st.session_state.get("conv_pick")
+if pick is not None:
+    user_row     = df.iloc[numbers.index(pick)]
     user_number  = user_row["client_number"]
     display_name = user_row["display_name"]
 
-    st.markdown("<div style='margin:1.3rem 0 0.25rem'></div>", unsafe_allow_html=True)
-    card_header(
-        title=f"{t('lb_detail_for')} {display_name}",
-        subtitle=f"📱 {user_number}",
-        icon_svg=KPI_ICONS["users"],
-    )
+    st.markdown("<div style='margin:0.9rem 0 0'></div>", unsafe_allow_html=True)
+    # El teléfono completo se muestra a propósito en el detalle (ver CLAUDE.md):
+    # es lo que el equipo necesita para contactar a la persona.
+    with card("detalle", f"{t('lb_detail_for')} {display_name}",
+              subtitle=f"📱 {user_number} · " + t("lb_conv_days").format(
+                  c=int(user_row["total_conversations"]), d=int(user_row["days_active"])),
+              icon_svg=KPI_ICONS["users"]):
+        df_convs = db.get_user_conversations(user_number, date_from, date_to, bot_id=bot_id, lang=lang)
+        df_msgs  = db.get_user_messages(user_number, date_from, date_to, bot_id=bot_id)
 
-    df_convs = db.get_user_conversations(user_number, date_from, date_to, bot_id=bot_id, lang=lang)
-    df_msgs  = db.get_user_messages(user_number, date_from, date_to, bot_id=bot_id)
-
-    if df_msgs.empty and df_convs.empty:
-        st.info(t("lb_no_conv_data"))
-    else:
-        # Summaries & transcripts first (most valuable); word cloud last.
-        tab_sum, tab_trans, tab_wc = st.tabs([
-            t("lb_tab_summaries"),
-            t("lb_tab_transcripts"),
-            t("lb_tab_wordcloud"),
-        ])
-
-        with tab_sum:
-            _render_summaries(df_convs)
-
-        with tab_trans:
-            _render_transcripts_from_msgs(df_msgs)
-
-        with tab_wc:
-            _render_wordcloud(df_convs)
+        if df_msgs.empty and df_convs.empty:
+            st.info(t("lb_no_conv_data"))
+        else:
+            # Resúmenes y transcripciones primero (lo más útil); la nube al final.
+            tab_sum, tab_trans, tab_wc = st.tabs([
+                t("lb_tab_summaries"),
+                t("lb_tab_transcripts"),
+                t("lb_tab_wordcloud"),
+            ])
+            with tab_sum:
+                _render_summaries(df_convs)
+            with tab_trans:
+                _render_transcripts_from_msgs(df_msgs)
+            with tab_wc:
+                _render_wordcloud(df_convs)

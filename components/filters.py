@@ -4,6 +4,7 @@ import datetime
 from zoneinfo import ZoneInfo
 import streamlit as st
 from utils.i18n import t
+from utils.styles import COLORS
 
 # UI opera en GMT-5 (Colombia/México). "Hoy" debe leerse en esa zona, no en
 # la del servidor (el contenedor de producción corre en UTC).
@@ -15,14 +16,16 @@ def _today() -> datetime.date:
 
 
 # Material Symbols icons (rendered natively by Streamlit — consistent mono line style)
+# «Conversaciones» vive en views/leaderboard.py (antes se llamaba así); el
+# archivo conserva el nombre para no romper los enlaces guardados (/leaderboard).
 NAV_ITEMS = [
     ("analysis", [
         ("views/overview.py",    "nav_home",        ":material/dashboard:"),
         ("views/usuarios.py",    "nav_users",       ":material/group:"),
+        ("views/leaderboard.py", "nav_leaderboard", ":material/forum:"),
     ]),
     ("operation", [
         ("views/alertas.py",     "nav_alerts",      ":material/warning:"),
-        ("views/leaderboard.py", "nav_leaderboard", ":material/emoji_events:"),
     ]),
 ]
 
@@ -43,7 +46,7 @@ def _render_logo(bot_id=None):
                 <span style="font-family:'Oswald',sans-serif;font-size:1.35rem;
                     font-weight:600;color:#0C1214;letter-spacing:0.02em">Aly</span>
                 <span style="font-family:'Open Sans',sans-serif;font-size:0.66rem;
-                    color:#9CA3AF;text-transform:uppercase;letter-spacing:0.09em;
+                    color:#4B5563;text-transform:uppercase;letter-spacing:0.09em;
                     margin-top:0.1rem">Dashboard</span>
             </div>
         </div>
@@ -134,17 +137,17 @@ def render_sidebar():
 
         if len(bot_options) > 1:
             st.selectbox(
-                "Bot",
+                t("bot_label"),
                 options=bot_options,
                 key="selected_bot",
                 format_func=bot_label,
-                help="Selecciona qué programa ver en el dashboard",
+                help=t("bot_help"),
             )
         else:
             # Un solo bot permitido → sin selector, queda fijado y se muestra como chip.
             st.session_state["selected_bot"] = bot_options[0] if bot_options else "apapachar"
             st.markdown(
-                '<div class="bot-locked">Bot<br>'
+                f'<div class="bot-locked">{t("bot_label")}<br>'
                 f'<b>{bot_label(st.session_state["selected_bot"])}</b></div>',
                 unsafe_allow_html=True,
             )
@@ -158,7 +161,7 @@ def render_sidebar():
         st.markdown(
             '<p style="font-family:\'Open Sans\',sans-serif;font-size:0.66rem;'
             'font-weight:700;text-transform:uppercase;letter-spacing:0.1em;'
-            'color:#9CA3AF;margin-bottom:0.5rem">' + t("filters") + '</p>',
+            f'color:{COLORS["text_muted"]};margin-bottom:0.5rem">' + t("filters") + '</p>',
             unsafe_allow_html=True,
         )
 
@@ -180,68 +183,52 @@ def render_sidebar():
         st.date_input(t("date_from"), key="filter_from")
         st.date_input(t("date_to"),   key="filter_to")
 
-        col_a, col_b = st.columns(2)
-        with col_a:
-            st.button("7d",  use_container_width=True, on_click=_set_range, args=(7,))
-        with col_b:
-            st.button("30d", use_container_width=True, on_click=_set_range, args=(30,))
+        # 90d: con pocas personas, 30 días suele mostrar «solo 7 días con
+        # actividad»; un trimestre deja ver la tendencia.
+        for col, days in zip(st.columns(3), (7, 30, 90)):
+            with col:
+                st.button(f"{days}d", use_container_width=True, on_click=_set_range, args=(days,))
 
-        # ── Cuenta: conectado como + logout ───────────────────────────────────
+        # ── Cuenta: conectado como + idioma + logout ─────────────────────────
         auth_name = st.session_state.get("auth_name")
         auth_role = st.session_state.get("auth_role")
         if auth_name:
             role_label = t(f"role_{auth_role}") if auth_role else ""
             st.markdown(
                 f'<div style="margin-top:1.25rem;padding-top:0.75rem;'
-                f'border-top:1px solid #E5E7EB;font-family:\'Open Sans\',sans-serif">'
+                f'border-top:1px solid {COLORS["border"]};font-family:\'Open Sans\',sans-serif">'
                 f'<div style="font-size:0.62rem;text-transform:uppercase;'
-                f'letter-spacing:0.08em;color:#9CA3AF">{t("logged_in_as")}</div>'
-                f'<div style="font-size:0.85rem;font-weight:600;color:#0C1214">{auth_name}</div>'
-                f'<div style="font-size:0.7rem;color:#6B7280">{role_label}</div>'
+                f'letter-spacing:0.08em;color:{COLORS["text_muted"]}">{t("logged_in_as")}</div>'
+                f'<div style="font-size:0.85rem;font-weight:600;color:{COLORS["text"]}">{auth_name}</div>'
+                f'<div style="font-size:0.72rem;color:{COLORS["text_secondary"]}">{role_label}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
+        _render_language()
         authenticator = st.session_state.get("_authenticator")
         if authenticator is not None:
             authenticator.logout(t("logout"), location="sidebar")
 
-        # ── Footer ────────────────────────────────────────────────────────────
-        st.markdown(
-            f'<div style="margin-top:0.75rem;padding:0.5rem 0;'
-            f'font-family:\'Open Sans\',sans-serif;font-size:0.68rem;'
-            f'color:#9CA3AF;border-top:1px solid #E5E7EB">'
-            f'{t("last_updated")}<br>'
-            f'<span style="color:#6B7280;font-weight:500;font-variant-numeric:tabular-nums">'
-            f'{datetime.datetime.now(TZ).strftime("%Y-%m-%d %H:%M")} GMT-5</span>'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
 
-
-def render_topbar():
-    """Render the global top bar — language selector pinned to the top-right.
-
-    Rendered in app.py above the page content, so it shows on every page.
-    """
+def _render_language():
+    """ES / EN en la barra lateral. Antes ocupaba una franja propia arriba de
+    cada página, que empujaba todo el contenido hacia abajo."""
     lang = st.session_state.get("lang", "es")
     if "lang_seg" not in st.session_state:
         st.session_state["lang_seg"] = "EN" if lang == "en" else "ES"
 
     def _on_lang_change():
+        # segmented_control deja None si se vuelve a tocar la opción elegida.
+        if st.session_state.get("lang_seg") is None:
+            st.session_state["lang_seg"] = "EN" if st.session_state.get("lang") == "en" else "ES"
         st.session_state.lang = "en" if st.session_state.get("lang_seg") == "EN" else "es"
 
-    # Push the control to the right; wrap it so CSS can target the topbar only.
-    _, col_lang = st.columns([6, 1])
-    with col_lang:
-        st.markdown('<div class="topbar-lang">', unsafe_allow_html=True)
-        st.segmented_control(
-            "language",
-            options=["ES", "EN"],
-            key="lang_seg",
-            on_change=_on_lang_change,
-            label_visibility="collapsed",
-        )
-        st.markdown('</div>', unsafe_allow_html=True)
+    st.segmented_control(
+        t("language"),
+        options=["ES", "EN"],
+        key="lang_seg",
+        on_change=_on_lang_change,
+    )
 
 
 def get_filters() -> dict:

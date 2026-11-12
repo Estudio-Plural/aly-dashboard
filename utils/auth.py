@@ -77,8 +77,8 @@ def _render_login_header():
     uri = logo_data_uri("equimundo.png")
     if uri:
         mark = (
-            f'<img src="{uri}" alt="Equimundo" style="width:150px;height:150px;'
-            'border-radius:18px;box-shadow:0 4px 14px rgba(17,0,121,0.12);display:block">'
+            f'<img src="{uri}" alt="Equimundo" style="width:104px;height:104px;'
+            'border-radius:16px;box-shadow:0 4px 14px rgba(17,0,121,0.12);display:block">'
         )
     else:
         mark = (
@@ -89,12 +89,24 @@ def _render_login_header():
             "<span style=\"font-family:'Oswald',sans-serif;font-size:1.9rem;"
             'font-weight:700;color:#FFFFFF;letter-spacing:0.02em">A</span></div>'
         )
+    # Sin sesión no hay nada que navegar: el sidebar vacío ocupaba un cuarto de
+    # la pantalla. Este CSS solo se inyecta en la pantalla de login.
+    st.html(
+        "<style>"
+        '[data-testid="stSidebar"], [data-testid="stExpandSidebarButton"],'
+        '[data-testid="stSidebarCollapseButton"] { display: none !important; }'
+        '[data-testid="stForm"] h1, [data-testid="stForm"] h2, [data-testid="stForm"] h3'
+        " { color: var(--text) !important; font-size: 1.15rem !important; }"
+        "</style>"
+    )
     st.markdown(
         '<div style="display:flex;flex-direction:column;align-items:center;'
-        'gap:0.75rem;margin:2.5rem 0 1.25rem">'
+        'gap:0.7rem;margin:3rem 0 1.25rem">'
         f"{mark}"
-        "<span style=\"font-family:'Oswald',sans-serif;font-size:1.7rem;"
+        "<span style=\"font-family:'Oswald',sans-serif;font-size:1.6rem;"
         'font-weight:600;color:#0C1214;letter-spacing:0.02em">Aly Dashboard</span>'
+        "<span style=\"font-family:'Open Sans',sans-serif;font-size:0.88rem;"
+        'color:#374151">Seguimiento del asistente de WhatsApp</span>'
         "</div>",
         unsafe_allow_html=True,
     )
@@ -132,18 +144,22 @@ def require_login() -> dict:
 
     if st.session_state.get("authentication_status") is not True:
         # Aún no autenticado → mostrar pantalla de login y detener todo lo demás.
-        _render_login_header()
-        authenticator.login(
-            location="main",
-            fields={
-                "Form name": t("login_title"),
-                "Username": t("login_username"),
-                "Password": t("login_password"),
-                "Login": t("login_button"),
-            },
-        )
-        if st.session_state.get("authentication_status") is False:
-            st.error(t("login_error"))
+        # Columna central angosta: el formulario a todo el ancho se veía como
+        # un campo de búsqueda. En móvil las columnas se apilan solas.
+        _, mid, _ = st.columns([1, 1.25, 1])
+        with mid:
+            _render_login_header()
+            authenticator.login(
+                location="main",
+                fields={
+                    "Form name": t("login_title"),
+                    "Username": t("login_username"),
+                    "Password": t("login_password"),
+                    "Login": t("login_button"),
+                },
+            )
+            if st.session_state.get("authentication_status") is False:
+                st.error(t("login_error"))
         st.stop()
 
     # Autenticado ────────────────────────────────────────────────────────────
