@@ -1,0 +1,27 @@
+# Caddy propio del panel, en el servidor del bot (plural-aly).
+#
+# El 80 de ese servidor es de Traefik, el proxy del bot, y no se toca. Por eso
+# este Caddy publica solo el 443 y saca el certificado de Let's Encrypt por ahí
+# mismo (desafío TLS-ALPN-01), sin pasar por el 80. Consecuencia: el panel se
+# abre con https://. Si alguien escribe http:// le contesta Traefik, no Caddy.
+{
+	auto_https disable_redirects
+}
+
+aly-panel.estudio-plural.co {
+	tls {
+		issuer acme {
+			disable_http_challenge
+		}
+	}
+
+	encode gzip
+
+	# Streamlit mantiene un WebSocket abierto; reverse_proxy hace el upgrade solo.
+	reverse_proxy dashboard:8501
+
+	log {
+		output stdout
+		format console
+	}
+}

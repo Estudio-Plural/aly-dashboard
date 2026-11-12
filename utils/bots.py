@@ -15,13 +15,16 @@ Un ``bot_id`` que aparezca en la DB y no esté acá cae a ``DEFAULT_BOT_META``
 asume geografía que no conoce.
 """
 
-DEFAULT_BOT_META = {"label": None, "geo": None, "weekly_deidentified": False}
+# ``logo``: (archivo en assets/logos, texto alternativo) que se muestra en la
+# barra lateral cuando ese bot está seleccionado. None = sin logo de programa.
+DEFAULT_BOT_META = {"label": None, "geo": None, "weekly_deidentified": False, "logo": None}
 
 BOTS = {
     "apapachar": {
         # Apapáchar (Fundación Apapacho) — crianza 0-5 años, Colombia.
         "label": "Apapáchar · Colombia",
         "geo": "colombia",
+        "logo": ("apapachar.png", "Programa Apapáchar"),
     },
     "mexico": {
         # "Semillas de Igualdad" (Equimundo + GENDES / Tec de Monterrey) —
@@ -59,3 +62,8 @@ def bot_geo(bot_id: str):
 def bot_weekly_deidentified(bot_id: str) -> bool:
     """Si el Excel de los lunes de este bot lleva el mismo ID seudónimo que la exportación."""
     return bool(bot_meta(bot_id).get("weekly_deidentified"))
+
+
+def bot_logo(bot_id: str):
+    """(archivo, alt) del logo del programa, o None si el bot no tiene."""
+    return bot_meta(bot_id).get("logo")

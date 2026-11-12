@@ -1,0 +1,16 @@
+# Secretos: en el servidor están en el directorio del proyecto, al lado del
+# código. Entran al contenedor en tiempo de ejecución (env_file y un volumen de
+# solo lectura), nunca a la imagen.
+.env
+.env.*
+.streamlit/secrets.toml
+
+.git
+.github
+.claude
+.venv
+venv
+__pycache__
+*.py[cod]
+.DS_Store
+*.log

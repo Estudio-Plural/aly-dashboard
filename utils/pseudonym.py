@@ -9,9 +9,9 @@ Estudio-Plural/aly-weekly-report): misma llave, mismo algoritmo, mismo formato
 ``D-`` + 8 hex. Así una docente es la misma en el Excel del lunes y en esta
 exportación. Si se cambia algo acá, se cambia allá.
 
-La llave vive en los secrets de Streamlit Cloud como clave de primer nivel
-(arriba de cualquier ``[sección]``), que Streamlit también expone como variable
-de entorno; en local, en ``.env``. Sin llave la exportación no se ofrece: la
+La llave vive en el ``.env`` (en producción, ``/opt/aly-dashboard/.env`` en
+plural-aly). También se acepta como clave de primer nivel de ``st.secrets``
+(arriba de cualquier ``[sección]``). Sin llave la exportación no se ofrece: la
 promesa es que el ID no cambie de una exportación a otra.
 """
 

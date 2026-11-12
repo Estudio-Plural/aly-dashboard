@@ -2,7 +2,7 @@
 
 Login usuario/contraseña vía ``streamlit-authenticator`` (0.4.x). Credenciales,
 cookie y mapeo rol→bots viven en ``st.secrets`` (``.streamlit/secrets.toml`` en
-local, secrets manager en Streamlit Cloud). Las contraseñas se guardan como hash
+local; en producción, el mismo archivo en /opt/aly-dashboard). Las contraseñas se guardan como hash
 bcrypt — nunca en texto plano.
 
 Roles:
@@ -69,23 +69,33 @@ def _allowed_bots(role: str | None, role_map: dict) -> list[str] | None:
 
 
 def _render_login_header():
-    """Bloque de marca centrado sobre el formulario de login."""
+    """Bloque de marca centrado sobre el formulario de login: el logo de
+    Equimundo (dueño del programa Aly) y el nombre del dashboard. Si falta el
+    archivo del logo, queda la marca «A» de antes."""
+    from utils.branding import logo_data_uri
+
+    uri = logo_data_uri("equimundo.png")
+    if uri:
+        mark = (
+            f'<img src="{uri}" alt="Equimundo" style="width:150px;height:150px;'
+            'border-radius:18px;box-shadow:0 4px 14px rgba(17,0,121,0.12);display:block">'
+        )
+    else:
+        mark = (
+            '<div style="width:56px;height:56px;border-radius:14px;'
+            'background:linear-gradient(135deg,#0273e5 0%,#110079 100%);'
+            'display:flex;align-items:center;justify-content:center;'
+            'box-shadow:0 4px 14px rgba(2,115,229,0.3)">'
+            "<span style=\"font-family:'Oswald',sans-serif;font-size:1.9rem;"
+            'font-weight:700;color:#FFFFFF;letter-spacing:0.02em">A</span></div>'
+        )
     st.markdown(
-        """
-        <div style="display:flex;flex-direction:column;align-items:center;
-            gap:0.5rem;margin:3rem 0 1.25rem">
-            <div style="
-                width:56px;height:56px;border-radius:14px;
-                background:linear-gradient(135deg,#0273e5 0%,#110079 100%);
-                display:flex;align-items:center;justify-content:center;
-                box-shadow:0 4px 14px rgba(2,115,229,0.3)">
-                <span style="font-family:'Oswald',sans-serif;font-size:1.9rem;
-                    font-weight:700;color:#FFFFFF;letter-spacing:0.02em">A</span>
-            </div>
-            <span style="font-family:'Oswald',sans-serif;font-size:1.7rem;
-                font-weight:600;color:#0C1214;letter-spacing:0.02em">Aly Dashboard</span>
-        </div>
-        """,
+        '<div style="display:flex;flex-direction:column;align-items:center;'
+        'gap:0.75rem;margin:2.5rem 0 1.25rem">'
+        f"{mark}"
+        "<span style=\"font-family:'Oswald',sans-serif;font-size:1.7rem;"
+        'font-weight:600;color:#0C1214;letter-spacing:0.02em">Aly Dashboard</span>'
+        "</div>",
         unsafe_allow_html=True,
     )
 
@@ -105,7 +115,7 @@ def require_login() -> dict:
         st.error(
             "Falta la configuración de autenticación. Crea "
             "`.streamlit/secrets.toml` (ver `.streamlit/secrets.toml.example`) "
-            "o configura los secrets en Streamlit Cloud."
+            "o, en producción, `/opt/aly-dashboard/.streamlit/secrets.toml`."
         )
         st.stop()
 
