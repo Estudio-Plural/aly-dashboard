@@ -5,8 +5,8 @@ from contextlib import contextmanager
 import streamlit as st
 
 COLORS = {
-    # Marca Aly (assets/brand/, CLAUDE.md «Marca»). Índigo = la voz de Aly;
-    # girasol = la semilla; crema/papel = el fondo cálido.
+    # Marca Aly (assets/brand/, CLAUDE.md «Marca Aly»). Índigo = la voz de Aly;
+    # girasol = el acento cálido (nunca texto); crema/papel = el fondo.
     "indigo":        "#2A2380",
     "girasol":       "#FFC83D",
     "crema":         "#FFF9EC",
@@ -42,6 +42,7 @@ def inject():
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,400..800;1,400..800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400..600,0..1,-50..200" rel="stylesheet">
 
     <style>
@@ -59,6 +60,7 @@ def inject():
         --indigo:         #2A2380;
         --girasol:        #FFC83D;
         --crema:          #FFF9EC;
+        --font-titulos:   'Bricolage Grotesque', 'Figtree', system-ui, sans-serif;
         --accent-green:   #3FB68B;
         --accent-red:     #C8341F;
         --accent-yellow:  #FFC83D;
@@ -233,12 +235,14 @@ def inject():
     }
 
     /* ── Headings ───────────────────────────────────────────────────────── */
+    /* Títulos de página en Bricolage Grotesque, la letra del logotipo (marca
+       Aly). El resto de la interfaz sigue en Figtree. */
     h1 {
-        font-family: 'Figtree', system-ui, sans-serif !important;
-        font-size: 1.75rem !important;
-        font-weight: 800 !important;
+        font-family: 'Bricolage Grotesque', 'Figtree', system-ui, sans-serif !important;
+        font-size: 1.85rem !important;
+        font-weight: 700 !important;
         color: var(--text) !important;
-        letter-spacing: -0.015em !important;
+        letter-spacing: -0.02em !important;
         margin-bottom: 0.25rem !important;
     }
     h2, h3 {
