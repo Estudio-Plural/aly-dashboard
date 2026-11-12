@@ -27,7 +27,7 @@ NAV_ITEMS = [
 ]
 
 
-def _render_logo():
+def _render_logo(bot_id=None):
     st.markdown(
         """
         <div style="padding:0.5rem 0 1.25rem;display:flex;align-items:center;gap:0.65rem">
@@ -48,6 +48,24 @@ def _render_logo():
             </div>
         </div>
         """,
+        unsafe_allow_html=True,
+    )
+    _render_program_logo(bot_id)
+
+
+def _render_program_logo(bot_id):
+    """Logo del programa del bot seleccionado (hoy solo Apapáchar), bajo la marca."""
+    from utils.bots import bot_logo
+    from utils.branding import logo_data_uri
+
+    logo = bot_logo(bot_id) if bot_id else None
+    uri = logo_data_uri(logo[0]) if logo else None
+    if not uri:
+        return
+    st.markdown(
+        f'<div style="margin:-0.35rem 0 1.15rem;display:flex;justify-content:center">'
+        f'<img src="{uri}" alt="{logo[1]}" '
+        f'style="width:128px;max-width:100%;height:auto;display:block"></div>',
         unsafe_allow_html=True,
     )
 
@@ -75,34 +93,44 @@ def _render_nav():
     )
 
 
+def _resolve_bot_options() -> list:
+    """Bots que puede ver el usuario logueado, y deja ``selected_bot`` válido.
+
+    El rol (auth.require_login) limita qué bots ve:
+      auth_allowed_bots == None  → todos (admin)
+      auth_allowed_bots == [...]  → solo esos bot_ids
+    Va antes de dibujar la marca, que necesita saber qué bot está elegido para
+    mostrar el logo del programa.
+    """
+    from utils.db import get_available_bot_ids
+
+    available_bots = get_available_bot_ids()
+    allowed = st.session_state.get("auth_allowed_bots")  # None = sin restricción
+
+    if allowed is None:
+        bot_options = available_bots
+    else:
+        # Intersecta con lo que hay en la DB; si la discovery no trae el bot
+        # del usuario (p. ej. aún sin datos), lo dejamos igual para no dejarlo
+        # sin opción.
+        bot_options = [b for b in available_bots if b in allowed] or list(allowed)
+
+    # Asegura que la selección actual sea válida para este rol (cubre cambio
+    # de usuario en el mismo navegador tras logout/login).
+    if st.session_state.get("selected_bot") not in bot_options:
+        st.session_state["selected_bot"] = bot_options[0] if bot_options else "apapachar"
+    return bot_options
+
+
 def render_sidebar():
     """Render the global sidebar. Pages read filters from st.session_state."""
     with st.sidebar:
-        _render_logo()
+        bot_options = _resolve_bot_options()
+        _render_logo(st.session_state.get("selected_bot"))
         _render_nav()
 
         # ── Bot selector (role-aware) ─────────────────────────────────────────
-        # El rol del usuario logueado (auth.require_login) limita qué bots ve:
-        #   auth_allowed_bots == None  → todos (admin)
-        #   auth_allowed_bots == [...]  → solo esos bot_ids
         from utils.bots import bot_label
-        from utils.db import get_available_bot_ids
-
-        available_bots = get_available_bot_ids()
-        allowed = st.session_state.get("auth_allowed_bots")  # None = sin restricción
-
-        if allowed is None:
-            bot_options = available_bots
-        else:
-            # Intersecta con lo que hay en la DB; si la discovery no trae el bot
-            # del usuario (p. ej. aún sin datos), lo dejamos igual para no dejarlo
-            # sin opción.
-            bot_options = [b for b in available_bots if b in allowed] or list(allowed)
-
-        # Asegura que la selección actual sea válida para este rol (cubre cambio
-        # de usuario en el mismo navegador tras logout/login).
-        if st.session_state.get("selected_bot") not in bot_options:
-            st.session_state["selected_bot"] = bot_options[0] if bot_options else "apapachar"
 
         if len(bot_options) > 1:
             st.selectbox(

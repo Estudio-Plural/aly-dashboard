@@ -122,6 +122,7 @@ corrupta. Es distinto del caveat de género de `apapachar` (ese guardaba vacío,
 ```
 Aly_dashboard/
 ├── .env                        # DATABASE_URL, PSEUDONYM_KEY (GITIGNORED)
+├── assets/logos/               # equimundo.png (login) y apapachar.png (barra lateral con el bot Apapáchar); ~15 KB cada uno
 ├── Dockerfile                  # Imagen de producción (Python 3.14, instala con constraints.txt)
 ├── .dockerignore               # Deja .env y secrets.toml fuera de la imagen
 ├── docker-compose.yml          # Producción en plural-aly: dashboard + Caddy propio en el 443
@@ -146,8 +147,9 @@ Aly_dashboard/
 ├── data/
 │   └── colombia_departments.geojson  # GeoJSON bundled (33 deptos, featureidkey="properties.NOMBRE_DPT")
 ├── utils/
-│   ├── auth.py                 # require_login(): login streamlit-authenticator + resolución rol→bots + logout
-│   ├── bots.py                 # Registro bot_id → {label, geo, weekly_deidentified}: nombre legible, qué mapa aplica y si su Excel de los lunes va sin identificar
+│   ├── auth.py                 # require_login(): login streamlit-authenticator + resolución rol→bots + logout. El login muestra el logo de Equimundo
+│   ├── branding.py             # logo_data_uri(): los logos de assets/logos embebidos como data URI
+│   ├── bots.py                 # Registro bot_id → {label, geo, weekly_deidentified, logo}: nombre legible, qué mapa aplica, si su Excel de los lunes va sin identificar y qué logo de programa va en la barra lateral
 │   ├── export.py               # Excel de la exportación sin identificar (hojas Cómo leer / Mensajes / Conversaciones / Registros) + chequeo de que no quede ningún identificador crudo
 │   ├── pseudonym.py            # IDs seudónimos D-…/C-… con HMAC y PSEUDONYM_KEY — mismo algoritmo que aly-weekly-report
 │   ├── db.py                   # Todas las queries SQL
@@ -338,6 +340,12 @@ Aly_Apapachar (bot) → Conversation Closer → Supabase → este dashboard
 `aly-evals` (repo hermano en `~/Dev/aly-evals/`) corre benchmarks contra el bot y termina escribiendo cientos de filas sentinel (`client_number IN ('eval','verify','smoke',…)`, `conversation_id LIKE 'eval-%' / 'verify-%' / 'debug-%' / …`). El filtro en `_date_filter()` las excluye automáticamente del dashboard. Antes del filtro (commit `d981c15`, 2026-05-27), `eval` solo aportaba 458 conversaciones / 918 mensajes.
 
 ---
+
+## Logos (desde 2026-11-12)
+
+- **Login**: el logo de Equimundo (el cuadrado de 640×640 que Laura Phillips-Alvarez mandó el 2026-07-29 para el perfil de WhatsApp del demo), encima de «Aly Dashboard». Si falta el archivo, vuelve la marca «A».
+- **Barra lateral**: debajo de la marca de Aly, el logo del programa del bot seleccionado. Hoy solo Apapáchar tiene (el «Programa apapáchar» que Milena Yazo mandó el 2026-08-03). Para sumarle uno a otro bot: el PNG en `assets/logos/` y `"logo": ("archivo.png", "texto alternativo")` en su entrada de `utils/bots.py`.
+- Van embebidos como data URI (`utils/branding.py`), no con `st.image`, para ubicarlos dentro de los bloques de marca. Por eso los PNG van chicos: recortados, a 360 px y con paleta reducida. `_resolve_bot_options()` corre antes de dibujar la marca, porque el logo depende del bot elegido.
 
 ## Despliegue
 
