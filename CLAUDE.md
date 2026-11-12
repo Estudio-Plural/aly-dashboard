@@ -356,7 +356,10 @@ Aly_Apapachar (bot) → Conversation Closer → Supabase → este dashboard
 
 **Guía de marca** (logo, colores, tipografía, voz y aplicaciones): https://claude.ai/artifact/HsMQYpXo1R9xDNCvdjnvrQ. Es privada hasta que Daniel la comparta.
 
-- **Idea:** la «a» de Aly es una burbuja de chat con una semilla `girasol` adentro (conversación + lo que crece). El resto del nombre va con el mismo trazo redondo.
+- **Logotipo:** «aly» en **Bricolage Grotesque 700** (ancho 100, tamaño óptico 12), convertida a trazados: una grotesca cálida, compacta, con la «a» abierta como una voz.
+  - La eligió Daniel el 2026-11-12 entre tres direcciones que propuso Codex.
+  - Antes, ese mismo día, hubo una «a»-burbuja con una semilla girasol, que quedó descartada.
+  - El isotipo es la «a» sola. Fuente OFL, Google Fonts.
 - **Archivos:** `assets/brand/`. Los SVG salen de `generar_marca.py` (`python3 assets/brand/generar_marca.py` los regenera); los PNG se rasterizaron de esos SVG con un navegador headless:
   - `aly-whatsapp-640.png` (foto de perfil, centrada para el recorte en círculo)
   - `aly-icono-512.png`
@@ -364,10 +367,12 @@ Aly_Apapachar (bot) → Conversation Closer → Supabase → este dashboard
   - `apple-touch-icon.png`
   - `aly-correo.png` (cabecera de los correos)
   - `aly-logotipo-color.png` (para Word y PowerPoint)
-- **Colores:** índigo `#2A2380` (la voz: logo, títulos, botón principal), datos `#4B44C6` (barras, links, foco), girasol `#FFC83D` (solo forma, nunca texto), crema `#FFF9EC`, papel `#FBF8F2` (fondo), lavanda `#EEECFB` (selección, cabeceras), tinta `#1B1838` / `#36324D` / `#4A4560`. Estados: alerta `#C8341F` (solo alertas rojas), ámbar `#B45309`, éxito `#177245`.
+- **Colores:** índigo `#2A2380` (la voz: logo, títulos, botón principal), datos `#4B44C6` (barras, links, foco), girasol `#FFC83D` (acento: barrita de la navegación activa; nunca texto), crema `#FFF9EC`, papel `#FBF8F2` (fondo), lavanda `#EEECFB` (selección, cabeceras), tinta `#1B1838` / `#36324D` / `#4A4560`. Estados: alerta `#C8341F` (solo alertas rojas), ámbar `#B45309`, éxito `#177245`.
   - Viven en `COLORS` y en `:root` de `utils/styles.py`, y en `.streamlit/config.toml` (el tema nativo). **Los tres tienen que coincidir.**
   - `COLORS["ramp"]` es la rampa papel→datos de los mapas de calor y la coropleta; `COLORS["no_data"]` es el gris de los departamentos sin datos.
-- **Tipografía:** Figtree en todo, de Google Fonts. Va por el CSS de `inject()` y por `theme.font` de `config.toml`, que es lo que llega a los campos nativos (etiquetas, ES/EN). Títulos y cifras en 800.
+- **Tipografía:** Bricolage Grotesque (700) en los títulos de página (`h1`, `--font-titulos`) y Figtree en todo lo demás: texto, cifras, controles.
+  - Las dos vienen de Google Fonts y van por el CSS de `inject()`.
+  - En `config.toml` se cargan por `theme.headingFont` y `theme.font`, que son los que llegan a los componentes nativos.
 - **En el panel:**
   - Barra lateral: el logotipo (`brand_data_uri("aly-logotipo.svg")` en `utils/branding.py`) con «Panel de seguimiento» debajo y, abajo de eso, el logo del programa.
   - Login: el logotipo grande y, **debajo del formulario, el logo de Equimundo** (pedido de Daniel: «en el panel de logueo que quede el de Equimundo»).

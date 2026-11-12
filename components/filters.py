@@ -37,7 +37,7 @@ def _render_logo(bot_id=None):
     uri = brand_data_uri("aly-logotipo.svg")
     st.markdown(
         f'<div style="padding:0.35rem 0 1.1rem;display:flex;flex-direction:column;gap:0.35rem">'
-        f'<img src="{uri}" alt="Aly" style="height:40px;width:auto;align-self:flex-start;display:block">'
+        f'<img src="{uri}" alt="Aly" style="height:46px;width:auto;align-self:flex-start;display:block">'
         f'<span style="font-family:\'Figtree\',sans-serif;font-size:0.72rem;font-weight:600;'
         f'color:{COLORS["text_muted"]};letter-spacing:0.02em">{t("brand_tagline")}</span>'
         f'</div>',

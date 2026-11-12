@@ -80,13 +80,14 @@ def _render_login_header():
         '[data-testid="stSidebar"], [data-testid="stExpandSidebarButton"],'
         '[data-testid="stSidebarCollapseButton"] { display: none !important; }'
         '[data-testid="stForm"] h1, [data-testid="stForm"] h2, [data-testid="stForm"] h3'
-        " { color: var(--text) !important; font-size: 1.15rem !important; }"
+        " { color: var(--text) !important; font-size: 1.2rem !important;"
+        " font-family: var(--font-titulos) !important; font-weight: 700 !important; }"
         "</style>"
     )
     st.markdown(
         '<div style="display:flex;flex-direction:column;align-items:center;'
         'gap:0.6rem;margin:3.2rem 0 1.4rem">'
-        f'<img src="{brand_data_uri("aly-logotipo.svg")}" alt="Aly" style="height:76px;width:auto;display:block">'
+        f'<img src="{brand_data_uri("aly-logotipo.svg")}" alt="Aly" style="height:88px;width:auto;display:block">'
         "<span style=\"font-family:'Figtree',sans-serif;font-size:0.95rem;font-weight:500;"
         f'color:{COLORS["text_secondary"]}">{t("brand_tagline_long")}</span>'
         "</div>",

@@ -1,65 +1,57 @@
-"""Isotipo y logotipo de Aly — fuente única de la marca.
+"""Logotipo e isotipo de Aly — fuente única de la marca.
 
-Aly es el asistente de WhatsApp de Equimundo (Apapáchar en Colombia, Semillas
-de Igualdad en México y el demo). La «a» es una burbuja de chat con la semilla
-adentro: la conversación (WhatsApp), el cuidado y lo que crece (Semillas); el
-resto del nombre va con el mismo trazo redondo.
+Aly es el asistente de WhatsApp de los programas de Equimundo (Apapáchar en
+Colombia, Semillas de Igualdad en México y el demo). El nombre va en
+**Bricolage Grotesque** 700 (ancho 100, tamaño óptico 12), convertida a
+trazados: una grotesca cálida y con carácter, compacta, con la «a» abierta
+como una voz. Los trazados los preparó Codex (OpenAI) a partir de la fuente
+de Google Fonts, que es SIL Open Font License; el logo no depende de que la
+fuente esté instalada. Elegida por Daniel el 2026-11-12, entre tres
+direcciones (ver CLAUDE.md, «Marca Aly»).
 
 Para regenerar los SVG de esta carpeta:
 
     python3 assets/brand/generar_marca.py
 
 Los PNG (WhatsApp 640, ícono 512, favicon 64, apple-touch 180, cabecera de
-correo 600×120) se rasterizan desde estos SVG con un navegador headless; no
-hace falta regenerarlos salvo que cambie el dibujo. Ver CLAUDE.md, «Marca».
+correo 600×120, logotipo para Word) se rasterizan desde estos SVG con un
+navegador headless; hay que regenerarlos si cambia el dibujo.
 """
 
-import math
-
 INDIGO, GIRASOL, CREMA = "#2A2380", "#FFC83D", "#FFF9EC"
-W = 11            # grosor del trazo
-R = 24            # radio del ojo (interior del trazo)
 
-def _bubble(cx, cy, ink):
-    """Burbuja rellena con cola abajo a la izquierda (forma de chat)."""
-    ro = R + W / 2
-    a = math.radians(128)
-    bx, by = cx + ro * math.cos(a), cy + ro * math.sin(a)          # donde nace la cola
-    a2 = math.radians(160)
-    b2x, b2y = cx + ro * math.cos(a2), cy + ro * math.sin(a2)
-    tipx, tipy = cx - ro - 3.5, cy + ro + 1.5                       # punta de la cola
-    return (f'<circle cx="{cx}" cy="{cy}" r="{ro}" fill="{ink}"/>'
-            f'<path d="M{b2x:.2f},{b2y:.2f} Q{cx-ro+2:.2f},{cy+ro-4:.2f} {tipx:.2f},{tipy:.2f} '
-            f'Q{bx-4:.2f},{by+6:.2f} {bx+6:.2f},{by+2:.2f} Z" fill="{ink}"/>')
+# Trazados de «aly» en Bricolage Grotesque 700. Línea base en y=100.
+_A = "M26.92 101.37Q22.55 101.37 19.15 99.65Q15.75 97.93 13.83 94.6Q11.92 91.27 11.92 86.43Q11.92 82.13 13.56 79.22Q15.2 76.3 18.42 74.49Q21.65 72.68 26.35 71.48Q31.05 70.28 37.17 69.4Q40.27 68.9 42.31 68.43Q44.35 67.97 45.38 66.93Q46.4 65.9 46.4 63.88Q46.4 61.08 44.41 59.07Q42.42 57.07 38.02 57.07Q35.18 57.07 32.71 58.07Q30.23 59.07 28.48 61.08Q26.72 63.1 25.95 66.17L13.22 62.23Q14.47 58.18 16.69 55.18Q18.92 52.18 22.11 50.12Q25.3 48.07 29.42 47.08Q33.53 46.1 38.38 46.1Q46.03 46.1 50.9 48.56Q55.77 51.02 58.14 56.17Q60.52 61.32 60.52 69.4V78.35Q60.52 81.83 60.67 85.48Q60.82 89.13 61.07 92.78Q61.33 96.43 61.72 100.0H48.97Q48.58 97.48 48.23 94.29Q47.87 91.1 47.68 87.75H45.85Q44.43 91.52 41.82 94.64Q39.2 97.77 35.46 99.57Q31.72 101.37 26.92 101.37ZM33.07 90.98Q34.95 90.98 36.9 90.32Q38.85 89.65 40.69 88.4Q42.53 87.15 44.09 85.29Q45.65 83.43 46.67 81.05L46.5 72.52L48.75 73.02Q46.92 74.32 44.53 75.05Q42.13 75.78 39.58 76.2Q37.02 76.62 34.52 77.1Q32.03 77.58 30.06 78.37Q28.08 79.15 26.93 80.53Q25.78 81.9 25.78 84.3Q25.78 87.4 27.82 89.19Q29.85 90.98 33.07 90.98Z"
+_L = "M70.38 100.0V28.48H84.5V100.0Z"
+_Y = "M114.82 118.23Q110.8 118.23 106.62 117.47Q102.43 116.72 98.8 115.19Q95.17 113.67 92.62 111.27L96.68 98.97Q99.88 102.28 104.68 103.94Q109.48 105.6 114.18 105.6Q119.57 105.6 123.09 103.44Q126.62 101.28 128.48 96.82Q130.35 92.35 130.6 85.6L131.23 76.57H128.97Q128.02 83.18 125.73 87.34Q123.45 91.5 120.01 93.44Q116.57 95.38 111.92 95.38Q106.17 95.38 102.28 92.5Q98.38 89.62 96.43 83.83Q94.47 78.05 94.47 69.52V47.47H108.88V66.03Q108.88 75.35 110.97 79.45Q113.05 83.55 117.42 83.55Q119.73 83.55 121.61 82.28Q123.48 81.02 124.83 78.63Q126.17 76.25 126.92 72.78Q127.67 69.32 127.73 64.9V47.47H142.1V86.18Q142.1 92.52 141.0 97.65Q139.9 102.78 137.73 106.62Q135.55 110.47 132.28 113.08Q129.0 115.68 124.66 116.96Q120.32 118.23 114.82 118.23Z"
 
-def _a(cx, cy, ink, seed):
-    sx = cx + R + W / 2 - 0.5
-    return (_bubble(cx, cy, ink) +
-            f'<path d="M{sx:.2f},{cy-R:.2f} L{sx:.2f},{cy+R+2:.2f}" stroke="{ink}" stroke-width="{W}" stroke-linecap="round"/>'
-            f'<circle cx="{cx}" cy="{cy}" r="8" fill="{seed}"/>')
+# Cajas exactas (medidas con fontTools): «aly» y la «a» sola.
+_ALY_BOX = (11.92, 28.48, 142.10, 118.23)
+_A_BOX = (11.92, 46.10, 61.72, 101.37)
 
-def isotipo(ink=INDIGO, seed=GIRASOL, bg=None, rx=24, size=None):
-    s = f' width="{size}" height="{size}"' if size else ""
-    bgs = f'<rect width="100" height="100" rx="{rx}" fill="{bg}"/>' if bg else ""
-    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"{s} role="img" aria-label="Aly">'
-            f'{bgs}{_a(46, 50, ink, seed)}</svg>')
 
-def logotipo(ink=INDIGO, seed=GIRASOL, height=None):
-    """«aly»: la a-burbuja + l + y del mismo trazo. viewBox 0 0 196 112 (línea base en y=83)."""
-    cx, cy = 34.5, 54
-    top, base = cy - R - W / 2, cy + R + W / 2          # altura x
-    sa = cx + R + W / 2 - 0.5                              # asta de la a
-    lx = sa + 22                                           # l
-    yl, yr = lx + 22, lx + 22 + 2 * R                      # y: brazo izq y der
-    ycx = (yl + yr) / 2
-    parts = [_a(cx, cy, ink, seed),
-             f'<path d="M{lx:.2f},{top-21:.2f} L{lx:.2f},{base-W/2:.2f}" stroke="{ink}" stroke-width="{W}" stroke-linecap="round"/>',
-             # y: «u» redonda cuyo brazo derecho baja y termina en un gancho hacia la izquierda
-             f'<path d="M{yl:.2f},{top+W/2:.2f} L{yl:.2f},{cy+2:.2f} A{R},{R} 0 0 0 {yr:.2f},{cy+2:.2f}" fill="none" stroke="{ink}" stroke-width="{W}" stroke-linecap="round"/>',
-             f'<path d="M{yr:.2f},{top+W/2:.2f} L{yr:.2f},{base+6:.2f} Q{yr:.2f},{base+22:.2f} {ycx:.2f},{base+22:.2f} L{ycx-7:.2f},{base+22:.2f}" fill="none" stroke="{ink}" stroke-width="{W}" stroke-linecap="round" stroke-linejoin="round"/>']
+def logotipo(ink=INDIGO, height=None):
+    """«aly» completo. viewBox ajustado a la palabra con 4 unidades de aire."""
+    x0, y0, x1, y1 = _ALY_BOX
+    pad = 4
+    vb = f"{x0 - pad:.2f} {y0 - pad:.2f} {x1 - x0 + 2 * pad:.2f} {y1 - y0 + 2 * pad:.2f}"
     h = f' height="{height}"' if height else ""
-    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {yr+W:.0f} 118"{h} role="img" aria-label="Aly">'
-            + "".join(parts) + '</svg>')
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{vb}"{h} role="img" aria-label="Aly">'
+            f'<g fill="{ink}"><path d="{_A}"/><path d="{_L}"/><path d="{_Y}"/></g></svg>')
+
+
+def isotipo(ink=INDIGO, bg=None, rx=22, alto=58, size=None):
+    """La «a» sola, centrada en un cuadrado de 100. ``alto`` = su altura en
+    ese cuadrado (58 para ícono y favicon; menos para WhatsApp, que recorta
+    en círculo)."""
+    x0, y0, x1, y1 = _A_BOX
+    s = alto / (y1 - y0)
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    sz = f' width="{size}" height="{size}"' if size else ""
+    fondo = f'<rect width="100" height="100" rx="{rx}" fill="{bg}"/>' if bg else ""
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"{sz} role="img" aria-label="Aly">'
+            f'{fondo}<path fill="{ink}" transform="translate(50 50) scale({s:.4f}) translate({-cx:.2f} {-cy:.2f})" d="{_A}"/></svg>')
+
 
 if __name__ == "__main__":
     from pathlib import Path
