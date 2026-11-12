@@ -13,17 +13,17 @@ from utils.styles import COLORS
 _BASE = dict(
     paper_bgcolor=COLORS["bg_card"],
     plot_bgcolor=COLORS["bg_card"],
-    font=dict(family="Open Sans, sans-serif", size=11, color=COLORS["text"]),
+    font=dict(family="Figtree, sans-serif", size=11, color=COLORS["text"]),
     margin=dict(l=8, r=8, t=14, b=8),
     hoverlabel=dict(
         bgcolor=COLORS["bg_card"],
         bordercolor=COLORS["border"],
-        font=dict(family="Open Sans, sans-serif", size=11),
+        font=dict(family="Figtree, sans-serif", size=11),
     ),
 )
 
 _AXIS = dict(
-    gridcolor="#F3F4F6",
+    gridcolor=COLORS["ramp"][0],
     linecolor=COLORS["border"],
     tickfont=dict(size=10, color=COLORS["text_secondary"]),
     title=None,  # hidden by default — card_header shows the label
@@ -35,7 +35,7 @@ def _layout(title: str = "", **kw):
     if title:
         base["title"] = dict(
             text=title, x=0.01, xanchor="left",
-            font=dict(family="Open Sans, sans-serif", size=12,
+            font=dict(family="Figtree, sans-serif", size=12,
                       color=COLORS["text_secondary"]),
         )
         base["margin"] = dict(l=8, r=8, t=40, b=8)
@@ -54,10 +54,17 @@ def bar_h(df: pd.DataFrame, x: str, y: str, title: str = "",
     )
     fig.update_layout(**_layout(title=title, height=height,
                                 yaxis_categoryorder="total ascending"))
-    fig.update_xaxes(title_text="")
     fig.update_yaxes(title_text="")
+    # Conteos: enteros y con la cifra al final de la barra. Con valores chicos
+    # Plotly ponía el eje en 0 / 0,5 / 1, que no existe para personas.
+    x_max = int(df[x].max()) if len(df) else 0
+    fig.update_xaxes(title_text="", tickformat=",d", rangemode="tozero",
+                     dtick=1 if x_max <= 8 else None, fixedrange=True)
+    fig.update_yaxes(fixedrange=True)
     fig.update_traces(
         marker_line_width=0,
+        text=df[x], textposition="outside", cliponaxis=False,
+        textfont=dict(size=11, color=COLORS["text"]),
         hovertemplate="<b>%{y}</b><br>%{x} usuarios<extra></extra>",
     )
     return fig
@@ -76,7 +83,7 @@ def donut(df: pd.DataFrame, names: str, values: str, title: str = "",
     fig.update_traces(
         textposition="inside",
         textinfo="percent",
-        textfont=dict(family="Open Sans, sans-serif", size=12, color="#FFFFFF"),
+        textfont=dict(family="Figtree, sans-serif", size=12, color="#FFFFFF"),
         marker=dict(line=dict(color=COLORS["bg_card"], width=2)),
         hovertemplate="<b>%{label}</b><br>%{value} usuarios (%{percent})<extra></extra>",
     )
@@ -86,7 +93,7 @@ def donut(df: pd.DataFrame, names: str, values: str, title: str = "",
     if title:
         layout["title"] = dict(
             text=title, x=0.01, xanchor="left",
-            font=dict(family="Open Sans, sans-serif", size=12,
+            font=dict(family="Figtree, sans-serif", size=12,
                       color=COLORS["text_secondary"]),
         )
         layout["margin"] = dict(l=8, r=8, t=40, b=8)
@@ -159,7 +166,7 @@ def choropleth(df: pd.DataFrame, locations: str, color: str, title: str = "",
             showframe=False,
             showcoastlines=False,
             showcountries=False,
-            showland=True,     landcolor="#D1D5DB",
+            showland=True,     landcolor=COLORS["border_strong"],
             showocean=False,
             showlakes=False,
             projection_type="natural earth",
@@ -171,7 +178,7 @@ def choropleth(df: pd.DataFrame, locations: str, color: str, title: str = "",
     if title:
         layout["title"] = dict(
             text=title, x=0.01, xanchor="left",
-            font=dict(family="Open Sans, sans-serif", size=12,
+            font=dict(family="Figtree, sans-serif", size=12,
                       color=COLORS["text_secondary"]),
         )
         layout["margin"] = dict(l=0, r=0, t=40, b=0)
@@ -212,6 +219,14 @@ def _normalize_region(s) -> str:
     if s.startswith("regional "):
         s = s[len("regional "):]
     return s.strip()
+
+
+def display_region(s) -> str:
+    """Nombre de región para mostrar: sin el prefijo «Regional » que el
+    onboarding de Apapáchar agrega desde el 2026-07-29 (con tildes y
+    mayúsculas, a diferencia de _normalize_region, que es para comparar)."""
+    s = str(s or "").strip()
+    return s[len("regional "):].strip() if s.lower().startswith("regional ") else s
 
 
 _COLOMBIA_ALIASES = {
@@ -278,10 +293,10 @@ def choropleth_colombia(df: pd.DataFrame, region_col: str, value_col: str,
         zmax=max_v,
         featureidkey=_COLOMBIA_FEATURE_KEY,
         colorscale=[
-            [0.0,  "#E5E7EB"],   # base gray for depts with 0 users
-            [0.01, "#DBEAFE"],
-            [0.25, "#93C5FD"],
-            [0.6,  "#3B82F6"],
+            [0.0,  COLORS["no_data"]],   # depts with 0 users
+            [0.01, COLORS["ramp"][1]],
+            [0.25, COLORS["ramp"][2]],
+            [0.6,  COLORS["ramp"][3]],
             [1.0,  COLORS["accent"]],
         ],
         marker_line_color="#FFFFFF",
@@ -297,11 +312,11 @@ def choropleth_colombia(df: pd.DataFrame, region_col: str, value_col: str,
     fig.update_layout(
         paper_bgcolor=COLORS["bg_card"],
         plot_bgcolor=COLORS["bg_card"],
-        font=dict(family="Open Sans, sans-serif", size=11, color=COLORS["text"]),
+        font=dict(family="Figtree, sans-serif", size=11, color=COLORS["text"]),
         hoverlabel=dict(
             bgcolor=COLORS["bg_card"],
             bordercolor=COLORS["border"],
-            font=dict(family="Open Sans, sans-serif", size=11),
+            font=dict(family="Figtree, sans-serif", size=11),
         ),
         height=height,
         margin=dict(l=0, r=0, t=8, b=8),

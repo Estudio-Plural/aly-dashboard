@@ -6,15 +6,17 @@ from dotenv import load_dotenv
 from utils.styles import inject as inject_styles
 from utils.i18n import t
 from utils.auth import require_login
-from components.filters import render_sidebar, render_topbar
+from utils.branding import brand_path
+from components.filters import render_sidebar
 
 load_dotenv()
 
 st.set_page_config(
-    page_title="Dashboard Aly",
-    page_icon="🤖",
+    page_title="Aly · Panel de seguimiento",
+    page_icon=brand_path("aly-favicon-64.png"),
     layout="wide",
-    initial_sidebar_state="expanded",
+    # "auto": abierta en escritorio y cerrada en el celular, donde tapaba todo.
+    initial_sidebar_state="auto",
 )
 
 inject_styles()
@@ -35,15 +37,12 @@ pages = [
     st.Page("views/overview.py",        title="Inicio",          icon="📊"),
     st.Page("views/usuarios.py",         title="Usuarios",        icon="👥"),
     st.Page("views/alertas.py",          title="Alertas",         icon="🚨"),
-    st.Page("views/leaderboard.py",      title="Leaderboard",     icon="🏆"),
+    st.Page("views/leaderboard.py",      title="Conversaciones",  icon="💬"),
 ]
 
 pg = st.navigation(pages, position="hidden")
 
 # Sidebar — logo + filters (rendered on every page)
 render_sidebar()
-
-# Top bar — language selector pinned top-right (rendered on every page)
-render_topbar()
 
 pg.run()

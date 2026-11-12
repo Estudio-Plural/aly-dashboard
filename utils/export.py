@@ -24,6 +24,7 @@ from zoneinfo import ZoneInfo
 
 from utils import pseudonym
 from utils.bots import bot_weekly_deidentified
+from utils.styles import COLORS
 
 _LOCAL_TZ = ZoneInfo("America/Bogota")
 
@@ -178,7 +179,7 @@ def _style(ws, widths: List[int], date_cols=(), datetime_cols=()) -> None:
     from openpyxl.styles import Alignment, Font, PatternFill
     from openpyxl.utils import get_column_letter
 
-    header_fill = PatternFill("solid", fgColor="110079")
+    header_fill = PatternFill("solid", fgColor=COLORS["indigo"].lstrip("#"))  # índigo de la marca Aly
     for cell in ws[1]:
         cell.font = Font(bold=True, color="FFFFFF")
         cell.fill = header_fill
@@ -294,7 +295,7 @@ def build_excel(
         ws = writer.sheets[lx["sheet_readme"]]
         ws.column_dimensions["A"].width = 24
         ws.column_dimensions["B"].width = 110
-        ws["A1"].font = Font(bold=True, size=13)
+        ws["A1"].font = Font(bold=True, size=13, color=COLORS["indigo"].lstrip("#"))
         for row in ws.iter_rows(min_row=2):
             row[0].font = Font(bold=True)
             row[1].alignment = Alignment(wrap_text=True, vertical="top")

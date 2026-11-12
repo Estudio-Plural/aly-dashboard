@@ -17,8 +17,19 @@ aly-panel.estudio-plural.co {
 
 	encode gzip
 
-	# Streamlit mantiene un WebSocket abierto; reverse_proxy hace el upgrade solo.
-	reverse_proxy dashboard:8501
+	# Piezas de la marca Aly (assets/brand/, montado de solo lectura): los
+	# correos del reporte cargan el logo desde aquí. Solo imágenes públicas.
+	handle_path /marca/* {
+		root * /srv/marca
+		header Cache-Control "public, max-age=86400"
+		file_server
+	}
+
+	# Todo lo demás, al panel. Streamlit mantiene un WebSocket abierto;
+	# reverse_proxy hace el upgrade solo.
+	handle {
+		reverse_proxy dashboard:8501
+	}
 
 	log {
 		output stdout

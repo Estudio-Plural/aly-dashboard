@@ -69,33 +69,44 @@ def _allowed_bots(role: str | None, role_map: dict) -> list[str] | None:
 
 
 def _render_login_header():
-    """Bloque de marca centrado sobre el formulario de login: el logo de
-    Equimundo (dueño del programa Aly) y el nombre del dashboard. Si falta el
-    archivo del logo, queda la marca «A» de antes."""
+    """Marca sobre el formulario de login: el logotipo de Aly y su bajada."""
+    from utils.branding import brand_data_uri
+    from utils.styles import COLORS
+
+    # Sin sesión no hay nada que navegar: el sidebar vacío ocupaba un cuarto de
+    # la pantalla. Este CSS solo se inyecta en la pantalla de login.
+    st.html(
+        "<style>"
+        '[data-testid="stSidebar"], [data-testid="stExpandSidebarButton"],'
+        '[data-testid="stSidebarCollapseButton"] { display: none !important; }'
+        '[data-testid="stForm"] h1, [data-testid="stForm"] h2, [data-testid="stForm"] h3'
+        " { color: var(--text) !important; font-size: 1.15rem !important; }"
+        "</style>"
+    )
+    st.markdown(
+        '<div style="display:flex;flex-direction:column;align-items:center;'
+        'gap:0.6rem;margin:3.2rem 0 1.4rem">'
+        f'<img src="{brand_data_uri("aly-logotipo.svg")}" alt="Aly" style="height:76px;width:auto;display:block">'
+        "<span style=\"font-family:'Figtree',sans-serif;font-size:0.95rem;font-weight:500;"
+        f'color:{COLORS["text_secondary"]}">{t("brand_tagline_long")}</span>'
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def _render_login_partner():
+    """El logo de Equimundo bajo el formulario (pedido de Daniel, 2026-11-12:
+    «en el panel de logueo que quede el de Equimundo»). Aly es el asistente de
+    sus programas; va como firma, sin texto que afirme una relación formal."""
     from utils.branding import logo_data_uri
 
     uri = logo_data_uri("equimundo.png")
-    if uri:
-        mark = (
-            f'<img src="{uri}" alt="Equimundo" style="width:150px;height:150px;'
-            'border-radius:18px;box-shadow:0 4px 14px rgba(17,0,121,0.12);display:block">'
-        )
-    else:
-        mark = (
-            '<div style="width:56px;height:56px;border-radius:14px;'
-            'background:linear-gradient(135deg,#0273e5 0%,#110079 100%);'
-            'display:flex;align-items:center;justify-content:center;'
-            'box-shadow:0 4px 14px rgba(2,115,229,0.3)">'
-            "<span style=\"font-family:'Oswald',sans-serif;font-size:1.9rem;"
-            'font-weight:700;color:#FFFFFF;letter-spacing:0.02em">A</span></div>'
-        )
+    if not uri:
+        return
     st.markdown(
-        '<div style="display:flex;flex-direction:column;align-items:center;'
-        'gap:0.75rem;margin:2.5rem 0 1.25rem">'
-        f"{mark}"
-        "<span style=\"font-family:'Oswald',sans-serif;font-size:1.7rem;"
-        'font-weight:600;color:#0C1214;letter-spacing:0.02em">Aly Dashboard</span>'
-        "</div>",
+        '<div style="display:flex;justify-content:center;margin:1.6rem 0 0">'
+        f'<img src="{uri}" alt="Equimundo" style="width:96px;height:96px;border-radius:16px;'
+        'box-shadow:0 3px 10px rgba(42,35,128,0.12);display:block"></div>',
         unsafe_allow_html=True,
     )
 
@@ -132,18 +143,23 @@ def require_login() -> dict:
 
     if st.session_state.get("authentication_status") is not True:
         # Aún no autenticado → mostrar pantalla de login y detener todo lo demás.
-        _render_login_header()
-        authenticator.login(
-            location="main",
-            fields={
-                "Form name": t("login_title"),
-                "Username": t("login_username"),
-                "Password": t("login_password"),
-                "Login": t("login_button"),
-            },
-        )
-        if st.session_state.get("authentication_status") is False:
-            st.error(t("login_error"))
+        # Columna central angosta: el formulario a todo el ancho se veía como
+        # un campo de búsqueda. En móvil las columnas se apilan solas.
+        _, mid, _ = st.columns([1, 1.25, 1])
+        with mid:
+            _render_login_header()
+            authenticator.login(
+                location="main",
+                fields={
+                    "Form name": t("login_title"),
+                    "Username": t("login_username"),
+                    "Password": t("login_password"),
+                    "Login": t("login_button"),
+                },
+            )
+            if st.session_state.get("authentication_status") is False:
+                st.error(t("login_error"))
+            _render_login_partner()
         st.stop()
 
     # Autenticado ────────────────────────────────────────────────────────────

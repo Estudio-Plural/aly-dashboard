@@ -2,6 +2,7 @@ import os
 import psycopg2
 import psycopg2.extras
 import pandas as pd
+import streamlit as st
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -36,12 +37,27 @@ def get_connection():
     return psycopg2.connect(DATABASE_URL)
 
 
-def fetch_df(query: str, params=None) -> pd.DataFrame:
+# Caché de lecturas. Sin esto, cada clic (cambiar de página, de bot o de
+# fecha) repetía ~15 queries contra Supabase y la página tardaba en aparecer.
+# Dos minutos alcanzan: el bot escribe cada pocos minutos y nadie mira el panel
+# en tiempo real. La clave es (query, params), así que el filtro de bot y de
+# fechas va dentro y un rol nunca ve datos cacheados de otro. Cada escritura
+# (execute) vacía la caché, para que marcar una alerta como revisada se vea
+# en el rerun siguiente.
+_CACHE_TTL_S = 120
+
+
+@st.cache_data(ttl=_CACHE_TTL_S, show_spinner=False)
+def _fetch_cached(query: str, params: tuple) -> pd.DataFrame:
     with get_connection() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute(query, params or [])
+            cur.execute(query, list(params))
             rows = cur.fetchall()
             return pd.DataFrame(rows)
+
+
+def fetch_df(query: str, params=None) -> pd.DataFrame:
+    return _fetch_cached(query, tuple(params or ()))
 
 
 def execute(query: str, params=None) -> int:
@@ -49,7 +65,9 @@ def execute(query: str, params=None) -> int:
     with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(query, params or [])
-            return cur.rowcount
+            n = cur.rowcount
+    _fetch_cached.clear()
+    return n
 
 
 # ---------------------------------------------------------------------------
@@ -506,7 +524,59 @@ def get_kpi_deltas(date_from: str, date_to: str, bot_id=None) -> dict:
         "users_delta":    _delta(current["n_users"],    prev["n_users"]),
         "sessions_delta": _delta(current["n_sessions"], prev["n_sessions"]),
         "messages_delta": _delta(curr_msg,              prev_msg),
+        # Los valores del período anterior, para mostrar la diferencia en
+        # absoluto («−7 · antes 13»): con pocas personas un % asusta de más.
+        "users_prev":     prev["n_users"],
+        "sessions_prev":  prev["n_sessions"],
+        "messages_prev":  prev_msg,
     }
+
+
+def get_last_activity(bot_id=None):
+    """Fecha y hora (GMT-5) del último mensaje del bot, sin importar el filtro.
+
+    Responde «¿el bot está vivo?» sin abrir nada: si el último mensaje es de
+    hace una semana, algo pasa (o nadie está escribiendo). Respeta el filtro de
+    cuentas de prueba. Devuelve un ``pd.Timestamp`` o None.
+    """
+    where, params = _date_filter("created_at", None, None, bot_id=bot_id)
+    df = fetch_df(
+        f"SELECT MAX(created_at AT TIME ZONE '{TZ}') AS last FROM public.users_interactions {where}",
+        params,
+    )
+    if df.empty or pd.isna(df.iloc[0]["last"]):
+        return None
+    return pd.Timestamp(df.iloc[0]["last"])
+
+
+def get_last_flag(bot_id=None) -> dict:
+    """La última conversación con alerta roja o naranja, sin importar el filtro.
+
+    Para que Alertas en cero diga algo útil («la última fue el 3 de octubre y
+    ya está revisada») en vez de solo «0». Clasifica con ``flag_severity`` y,
+    si viene vacío, con el prefijo de ``flags`` (mismo criterio que la página).
+    """
+    where, params = _date_filter(
+        "conversation_date", None, None,
+        extra=("(flag_severity IN ('HIGH', 'MEDIUM') "
+               "OR flags ILIKE 'HIGH-%%' OR flags ILIKE 'MEDIUM-%%')"),
+        client_col="user_number", bot_col="bot_id", bot_id=bot_id,
+    )
+    df = fetch_df(
+        f"""
+        SELECT (conversation_date AT TIME ZONE 'UTC') AT TIME ZONE '{TZ}' AS conversation_date,
+               flag_severity, flags,
+               reviewed_at AT TIME ZONE '{TZ}' AS reviewed_at
+        FROM public.conversations_data
+        {where}
+        ORDER BY conversation_date DESC
+        LIMIT 1
+        """,
+        params,
+    )
+    if df.empty:
+        return {}
+    return df.iloc[0].to_dict()
 
 
 # ---------------------------------------------------------------------------

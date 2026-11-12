@@ -51,6 +51,15 @@ echo "== main: $ANTES → $(git rev-parse --short HEAD)  $(git log -1 --format=%
 
 chmod 600 .env .streamlit/secrets.toml
 
+# Validar el Caddyfile ANTES de levantar: si cambió y está mal, Caddy no
+# arrancaría al recrearse y el panel quedaría caído. Así falla acá y el que
+# está corriendo sigue.
+docker run --rm -v /opt/aly-dashboard/caddy:/etc/caddy:ro caddy:2.11.2 \
+  caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null 2>&1 \
+  || { echo "❌ El Caddyfile no es válido. No se desplegó nada:"; \
+       docker run --rm -v /opt/aly-dashboard/caddy:/etc/caddy:ro caddy:2.11.2 \
+         caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile 2>&1 | tail -3; exit 1; }
+
 docker compose -p aly-dashboard up -d --build 2>&1 | tail -4
 # Si cambió el Caddyfile, `up` no reinicia Caddy (su contenedor no cambió);
 # reload aplica la config nueva sin cortar conexiones.

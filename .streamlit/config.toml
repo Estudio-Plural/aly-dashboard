@@ -1,7 +1,18 @@
+# Tema con la marca Aly (assets/brand/, CLAUDE.md «Marca»). Lo toman los
+# componentes nativos de Streamlit (campos, toggles, ES/EN, foco); el resto de
+# la identidad va por el CSS de utils/styles.py. Los colores tienen que
+# coincidir con COLORS de ese archivo.
 [theme]
-base                   = "light"
-primaryColor           = "#0273e5"
-backgroundColor        = "#EFEFEF"
-secondaryBackgroundColor = "#FFFFFF"
-textColor              = "#0C1214"
-font                   = "sans serif"
+base                     = "light"
+primaryColor             = "#4B44C6"
+backgroundColor          = "#FBF8F2"
+secondaryBackgroundColor = "#F5F3FC"
+textColor                = "#1B1838"
+linkColor                = "#4B44C6"
+borderColor              = "#E9E4DA"
+font                     = "Figtree:https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,400..800;1,400..800&display=swap, sans-serif"
+headingFont              = "Figtree:https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,400..800;1,400..800&display=swap, sans-serif"
+
+[theme.sidebar]
+backgroundColor          = "#FFFFFF"
+secondaryBackgroundColor = "#F5F3FC"
