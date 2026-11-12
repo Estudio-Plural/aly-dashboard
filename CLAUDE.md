@@ -83,7 +83,7 @@ género hay que arrastrar este caveat a la UI.
 
 **Mapa geográfico = config por bot (resuelto 2026-08-20)**: el pendiente de "el mapa de Colombia
 se renderiza para cualquier bot" se cerró con **`utils/bots.py`**, un registro `bot_id → {label, geo}`.
-`pages/usuarios.py` consulta `bot_geo(bot_id)`: si es `"colombia"` renderiza el choropleth de
+`views/usuarios.py` consulta `bot_geo(bot_id)`: si es `"colombia"` renderiza el choropleth de
 departamentos + el panel de cobertura territorial (layout 2:1 de siempre); si es `None`
 (hoy `mexico` y `demo`) muestra **solo el ranking de regiones a ancho completo**, sin mapa mal
 etiquetado y sin "% del país" (una métrica que no significa nada sin GeoJSON), más el caption
@@ -134,7 +134,7 @@ Aly_dashboard/
 │   ├── secrets.toml            # Auth: credenciales + roles (GITIGNORED — no commitear)
 │   └── secrets.toml.example    # Plantilla commiteada del secrets.toml
 ├── app.py                      # Entry point — auth gate (require_login), st.navigation (position="hidden"), CSS, render_sidebar() + render_topbar()
-├── pages/
+├── views/
 │   ├── overview.py             # Inicio: hero banner, 4 KPIs con sparkline + caption explicativo, growth chart + stat_list (peak hour/day, grid 2:1), usuarios activos por semana + «Indicadores de seguimiento» (registrados acumulados, nuevos en el período, volvieron en 2+ semanas, % respondidas con el material; grid 2:1, desde 2026-11-11 para el M&E de México), heatmap bloques. La gráfica de actividad rellena días sin datos con 0, fija el eje X al rango y desactiva el zoom de Plotly (ver Convenciones)
 │   ├── usuarios.py             # Demografía: 3 KPIs (users, regiones, msg/usuario). Layout **según `bot_geo()`**: bots con mapa (apapachar) → 2:1 choropleth Colombia + cobertura + ranking top 10; bots sin mapa (mexico, demo) → ranking top 15 a ancho completo. Al final, **Exportación sin identificar** (botón de Excel, ver sección propia)
 │   ├── conversaciones.py       # Keywords + resúmenes (no está en nav, en standby)
@@ -162,6 +162,8 @@ Aly_dashboard/
 ---
 
 ## Navegación
+
+> ⚠️ **Las páginas viven en `views/`, NUNCA en `pages/`** (desde 2026-11-12). Con una carpeta `pages/`, Streamlit la toma como multipágina clásica: mientras la sesión no llega a `st.navigation` (y sin login no llega, porque `require_login()` hace `st.stop()` antes), abrir `/alertas` o `/leaderboard` directamente **corre esa página sin pasar por `app.py` ni por el login**. Pasó en producción (y en Streamlit Cloud) hasta el 2026-11-12: cualquiera con el link veía alertas, transcripciones y teléfonos. Para comprobarlo: servidor recién arrancado, ventana privada, abrir `/<página>` y verificar que pide login.
 `st.navigation(pages, position="hidden")` oculta la nav nativa; la real se renderiza en `_render_nav()` (components/filters.py) con `st.page_link` + Material Symbols (`:material/dashboard:`, `:material/group:`, `:material/warning:`, `:material/emoji_events:`) agrupados en secciones **ANÁLISIS** (Inicio, Usuarios) y **OPERACIÓN** (Alertas, Leaderboard). La página `conversaciones.py` existe pero no está en `NAV_ITEMS` ni en `app.py:pages`.
 
 **Selector de idioma**: vive en `render_topbar()` (no en el sidebar) — un `st.segmented_control(["ES","EN"], key="lang_seg")` alineado a la derecha del área principal, renderizado en `app.py` antes de `pg.run()` para que aparezca en todas las páginas. Su `on_change` escribe `st.session_state.lang`. CSS: `.topbar-lang` + override compacto de `[data-testid="stSegmentedControl"]` en `utils/styles.py`.
@@ -259,7 +261,7 @@ mismo usuario en días distintos: al 2026-08-20 hay 2 colisiones en `apapachar` 
 del 2 y del 11 de junio, resúmenes distintos) y 20 en `demo`. La PK real de la tabla es la
 columna **`id` (bigint)**.
 
-Esto causaba dos bugs en `pages/alertas.py`, arreglados el 2026-08-20:
+Esto causaba dos bugs en `views/alertas.py`, arreglados el 2026-08-20:
 1. **Crash**: el checkbox "marcar revisado" usaba `key=f"rev_{conv_id}"`; dos filas con el mismo
    `conversation_id` producían keys duplicadas y Streamlit tumbaba la página entera con
    `StreamlitDuplicateElementKey`. Reventaba con `demo` seleccionado; `apapachar` se salvaba
@@ -293,7 +295,7 @@ El campo `flags` en `conversations_data` es un string CSV con múltiples flags p
 - `MEDIUM-<razón>` → 🟠 naranja (advertencia)
 - `LOW-<razón>` → ignorado en UI (no se muestra)
 
-La lógica de clasificación vive en `_classify_flag()` en `pages/alertas.py`. También se replica en `pages/overview.py` (para el status del hero banner) y `pages/leaderboard.py` (para contar flags por usuario).
+La lógica de clasificación vive en `_classify_flag()` en `views/alertas.py`. También se replica en `views/overview.py` (para el status del hero banner) y `views/leaderboard.py` (para contar flags por usuario).
 
 **Si el bot cambia el formato de estos campos, actualizar `_classify_flag()` en los 3 archivos.**
 

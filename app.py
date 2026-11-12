@@ -32,10 +32,10 @@ require_login()
 
 # Define pages
 pages = [
-    st.Page("pages/overview.py",        title="Inicio",          icon="📊"),
-    st.Page("pages/usuarios.py",         title="Usuarios",        icon="👥"),
-    st.Page("pages/alertas.py",          title="Alertas",         icon="🚨"),
-    st.Page("pages/leaderboard.py",      title="Leaderboard",     icon="🏆"),
+    st.Page("views/overview.py",        title="Inicio",          icon="📊"),
+    st.Page("views/usuarios.py",         title="Usuarios",        icon="👥"),
+    st.Page("views/alertas.py",          title="Alertas",         icon="🚨"),
+    st.Page("views/leaderboard.py",      title="Leaderboard",     icon="🏆"),
 ]
 
 pg = st.navigation(pages, position="hidden")

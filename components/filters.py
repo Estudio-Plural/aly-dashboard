@@ -17,12 +17,12 @@ def _today() -> datetime.date:
 # Material Symbols icons (rendered natively by Streamlit — consistent mono line style)
 NAV_ITEMS = [
     ("analysis", [
-        ("pages/overview.py",    "nav_home",        ":material/dashboard:"),
-        ("pages/usuarios.py",    "nav_users",       ":material/group:"),
+        ("views/overview.py",    "nav_home",        ":material/dashboard:"),
+        ("views/usuarios.py",    "nav_users",       ":material/group:"),
     ]),
     ("operation", [
-        ("pages/alertas.py",     "nav_alerts",      ":material/warning:"),
-        ("pages/leaderboard.py", "nav_leaderboard", ":material/emoji_events:"),
+        ("views/alertas.py",     "nav_alerts",      ":material/warning:"),
+        ("views/leaderboard.py", "nav_leaderboard", ":material/emoji_events:"),
     ]),
 ]
 
