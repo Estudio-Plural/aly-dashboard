@@ -305,6 +305,9 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "lb_pick_none":        {"es": "Elige a una persona…", "en": "Choose someone…"},
     "lb_messages_help":    {"es": "Mensajes de la persona y de Aly en el período", "en": "Messages from the person and from Aly in the period"},
     "lb_conv_days":        {"es": "{c} conversación(es) · {d} día(s) activo(s)", "en": "{c} conversation(s) · {d} active day(s)"},
+    # Marca
+    "brand_tagline":       {"es": "Panel de seguimiento", "en": "Monitoring panel"},
+    "brand_tagline_long":  {"es": "Panel de seguimiento del asistente de WhatsApp", "en": "WhatsApp assistant monitoring panel"},
     # Sidebar
     "bot_label":           {"es": "Programa", "en": "Program"},
     "bot_help":            {"es": "Qué programa ver en el dashboard", "en": "Which program to show"},

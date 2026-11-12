@@ -24,16 +24,16 @@ from components.filters import get_filters
 _LAYOUT = dict(
     paper_bgcolor=COLORS["bg_card"],
     plot_bgcolor=COLORS["bg_card"],
-    font=dict(family="Open Sans, sans-serif", size=11, color=COLORS["text"]),
+    font=dict(family="Figtree, sans-serif", size=11, color=COLORS["text"]),
     margin=dict(l=8, r=8, t=16, b=8),
     xaxis=dict(
-        gridcolor="#F3F4F6",
+        gridcolor=COLORS["ramp"][0],
         linecolor=COLORS["border"],
         tickfont=dict(size=10, color=COLORS["text_secondary"]),
         showgrid=True,
     ),
     yaxis=dict(
-        gridcolor="#F3F4F6",
+        gridcolor=COLORS["ramp"][0],
         linecolor=COLORS["border"],
         tickfont=dict(size=10, color=COLORS["text_secondary"]),
         showgrid=True,
@@ -41,7 +41,7 @@ _LAYOUT = dict(
     hoverlabel=dict(
         bgcolor=COLORS["bg_card"],
         bordercolor=COLORS["border"],
-        font=dict(family="Open Sans, sans-serif", size=11),
+        font=dict(family="Figtree, sans-serif", size=11),
     ),
 )
 
@@ -329,20 +329,16 @@ with st.expander(t("usage_hours"), icon=":material/schedule:"):
             y=ordered_labels,
             xgap=3,
             ygap=3,
-            colorscale=[
-                [0.0,  "#F3F4F6"],
-                [0.15, "#DBEAFE"],
-                [0.4,  "#93C5FD"],
-                [0.7,  "#3B82F6"],
-                [1.0,  COLORS["accent"]],
-            ],
+            colorscale=[[0.0, COLORS["ramp"][0]], [0.15, COLORS["ramp"][1]],
+                        [0.4, COLORS["ramp"][2]], [0.7, COLORS["ramp"][3]],
+                        [1.0, COLORS["ramp"][4]]],
             showscale=False,
             hovertemplate="<b>%{y}</b> · %{x}h<br>%{z} " + t("hover_messages") + "<extra></extra>",
         ))
         fig_h.update_layout(
             paper_bgcolor=COLORS["bg_card"],
             plot_bgcolor=COLORS["bg_card"],
-            font=dict(family="Open Sans, sans-serif", size=10),
+            font=dict(family="Figtree, sans-serif", size=10),
             margin=dict(l=8, r=8, t=8, b=8),
             height=230,
             xaxis=dict(side="bottom", showgrid=False, zeroline=False,

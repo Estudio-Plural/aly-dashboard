@@ -6,13 +6,14 @@ from dotenv import load_dotenv
 from utils.styles import inject as inject_styles
 from utils.i18n import t
 from utils.auth import require_login
+from utils.branding import brand_path
 from components.filters import render_sidebar
 
 load_dotenv()
 
 st.set_page_config(
-    page_title="Dashboard Aly",
-    page_icon="🤖",
+    page_title="Aly · Panel de seguimiento",
+    page_icon=brand_path("aly-favicon-64.png"),
     layout="wide",
     # "auto": abierta en escritorio y cerrada en el celular, donde tapaba todo.
     initial_sidebar_state="auto",

@@ -122,6 +122,7 @@ corrupta. Es distinto del caveat de género de `apapachar` (ese guardaba vacío,
 ```
 Aly_dashboard/
 ├── .env                        # DATABASE_URL, PSEUDONYM_KEY (GITIGNORED)
+├── assets/brand/               # Marca Aly: SVG (fuente, de generar_marca.py) + PNG (WhatsApp, ícono, favicon, correo). Caddy la sirve en /marca/
 ├── assets/logos/               # equimundo.png (login) y apapachar.png (barra lateral con el bot Apapáchar); ~15 KB cada uno
 ├── Dockerfile                  # Imagen de producción (Python 3.14, instala con constraints.txt)
 ├── .dockerignore               # Deja .env y secrets.toml fuera de la imagen
@@ -311,18 +312,14 @@ La lógica de clasificación vive en `_classify_flag()` en `views/alertas.py`. T
 ---
 
 ## Estilo visual
-- **Texto**: `text_secondary` `#374151` y `text_muted` `#4B5563` (desde 2026-11-12; antes `#6B7280`/`#9CA3AF`, se leían lavados). Nada más claro que `text_muted` para texto.
+- **Colores y tipografía**: los de la marca Aly (sección «Marca Aly»). `text_secondary` `#36324D` y `text_muted` `#4A4560`: nada más claro que `text_muted` para texto (el gris lavado de antes no se leía).
 - **⚠️ CSS de `inject()`**: nada de `<` seguido de letra adentro del `<style>`, ni en comentarios. El sanitizador de `st.html` lo toma por una etiqueta y descarta TODO el CSS sin avisar (pasó con un comentario que decía `st-key-<key>`).
 - **Conteos en gráficas**: siempre enteros (`tickformat=",d"`, `dtick=1` si el máximo ≤ 8, `rangemode="tozero"`) y, si son pocas barras, la cifra encima. Un solo eje Y; nada de `shape="spline"` en conteos (inventa valores entre días).
-- **Fuentes**: Oswald (títulos, valores KPI, hero number) · Open Sans (body, labels, captions) · Material Symbols Rounded (íconos de nav) — Google Fonts
-- **Sidebar**: claro `#FFFFFF` con borde gris, logo con cuadrado gradient (azul→navy) + wordmark "Aly"
-- **Cards / fondo contenedores**: blanco `#FFFFFF`
-- **Fondo app**: `#F7F8FA` (cool gray, más premium que el antiguo `#F0F2F5`)
-- **Accent principal**: `#0273e5` · **Navy**: `#110079` · **Amarillo**: `#FFCF24` · **Naranja**: `#F15B22`
-- **Positivo/negativo**: `#22C55E` / `#F15B22`
-- **Heatmap**: `go.Heatmap` con `xgap=3, ygap=3` para bloques discretos tipo GitHub contributions; paleta gray→blue→accent.
-- **Mapa de países**: `choropleth()` en charts.py renderiza **scattergeo silueta plana** — land `#D1D5DB`, sin bordes de países/costas, dots accent blue con halo soft bajo cada dot. **No se usa en Usuarios actualmente** (se reemplazó por el mapa de Colombia) pero la función queda disponible.
-- **Mapa de Colombia**: `choropleth_colombia()` en charts.py — `go.Choropleth` con GeoJSON local (`data/colombia_departments.geojson`). Siempre renderiza los 33 departamentos (deptos sin datos en gris `#E5E7EB`); rampa `#DBEAFE→#3B82F6→accent` para deptos con usuarios. `showscale=False` (la cobertura ya está en el panel lateral). Aliases para normalizar variantes de input: `bogota`→`SANTAFE DE BOGOTA D.C`, `san andres`→`ARCHIPIELAGO ...`, `guajira`→`LA GUAJIRA`, `valle`→`VALLE DEL CAUCA`. Las regiones que no matchean ningún departamento se listan como caption bajo el mapa.
+- **Fuentes**: Figtree (todo) · Material Symbols Rounded (íconos de nav) — Google Fonts. Hasta 2026-11-12 eran Oswald + Open Sans.
+- **Sidebar**: `#FFFFFF` con borde cálido, logotipo de Aly arriba. **Cards**: `#FFFFFF`. **Fondo app**: papel `#FBF8F2`.
+- **Heatmap**: `go.Heatmap` con `xgap=3, ygap=3` para bloques discretos; colores de `COLORS["ramp"]`.
+- **Mapa de países**: `choropleth()` en charts.py renderiza **scattergeo silueta plana** — land `COLORS["border_strong"]`, sin bordes de países/costas, dots accent blue con halo soft bajo cada dot. **No se usa en Usuarios actualmente** (se reemplazó por el mapa de Colombia) pero la función queda disponible.
+- **Mapa de Colombia**: `choropleth_colombia()` en charts.py — `go.Choropleth` con GeoJSON local (`data/colombia_departments.geojson`). Siempre renderiza los 33 departamentos (deptos sin datos en `COLORS["no_data"]`); rampa `COLORS["ramp"]` → `accent` para deptos con usuarios. `showscale=False` (la cobertura ya está en el panel lateral). Aliases para normalizar variantes de input: `bogota`→`SANTAFE DE BOGOTA D.C`, `san andres`→`ARCHIPIELAGO ...`, `guajira`→`LA GUAJIRA`, `valle`→`VALLE DEL CAUCA`. Las regiones que no matchean ningún departamento se listan como caption bajo el mapa.
 
 ---
 
@@ -355,10 +352,35 @@ Aly_Apapachar (bot) → Conversation Closer → Supabase → este dashboard
 
 ---
 
-## Logos (desde 2026-11-12)
+## Marca Aly (desde 2026-11-12)
 
-- **Login**: el logo de Equimundo (el cuadrado de 640×640 que Laura Phillips-Alvarez mandó el 2026-07-29 para el perfil de WhatsApp del demo), encima de «Aly Dashboard». Si falta el archivo, vuelve la marca «A».
-- **Barra lateral**: debajo de la marca de Aly, el logo del programa del bot seleccionado. Hoy solo Apapáchar tiene (el «Programa apapáchar» que Milena Yazo mandó el 2026-08-03). Para sumarle uno a otro bot: el PNG en `assets/logos/` y `"logo": ("archivo.png", "texto alternativo")` en su entrada de `utils/bots.py`.
+**Guía de marca** (logo, colores, tipografía, voz y aplicaciones): https://claude.ai/artifact/HsMQYpXo1R9xDNCvdjnvrQ. Es privada hasta que Daniel la comparta.
+
+- **Idea:** la «a» de Aly es una burbuja de chat con una semilla `girasol` adentro (conversación + lo que crece). El resto del nombre va con el mismo trazo redondo.
+- **Archivos:** `assets/brand/`. Los SVG salen de `generar_marca.py` (`python3 assets/brand/generar_marca.py` los regenera); los PNG se rasterizaron de esos SVG con un navegador headless:
+  - `aly-whatsapp-640.png` (foto de perfil, centrada para el recorte en círculo)
+  - `aly-icono-512.png`
+  - `aly-favicon-64.png` (el `page_icon` de `app.py`)
+  - `apple-touch-icon.png`
+  - `aly-correo.png` (cabecera de los correos)
+  - `aly-logotipo-color.png` (para Word y PowerPoint)
+- **Colores:** índigo `#2A2380` (la voz: logo, títulos, botón principal), datos `#4B44C6` (barras, links, foco), girasol `#FFC83D` (solo forma, nunca texto), crema `#FFF9EC`, papel `#FBF8F2` (fondo), lavanda `#EEECFB` (selección, cabeceras), tinta `#1B1838` / `#36324D` / `#4A4560`. Estados: alerta `#C8341F` (solo alertas rojas), ámbar `#B45309`, éxito `#177245`.
+  - Viven en `COLORS` y en `:root` de `utils/styles.py`, y en `.streamlit/config.toml` (el tema nativo). **Los tres tienen que coincidir.**
+  - `COLORS["ramp"]` es la rampa papel→datos de los mapas de calor y la coropleta; `COLORS["no_data"]` es el gris de los departamentos sin datos.
+- **Tipografía:** Figtree en todo, de Google Fonts. Va por el CSS de `inject()` y por `theme.font` de `config.toml`, que es lo que llega a los campos nativos (etiquetas, ES/EN). Títulos y cifras en 800.
+- **En el panel:**
+  - Barra lateral: el logotipo (`brand_data_uri("aly-logotipo.svg")` en `utils/branding.py`) con «Panel de seguimiento» debajo y, abajo de eso, el logo del programa.
+  - Login: el logotipo grande y, **debajo del formulario, el logo de Equimundo** (pedido de Daniel: «en el panel de logueo que quede el de Equimundo»).
+  - Navegación activa: lavanda con una barrita girasol.
+- **`/marca/`:** el Caddy del panel sirve `assets/brand/` (montado de solo lectura) en https://aly-panel.estudio-plural.co/marca/. De ahí cargan el logo los correos de `aly-weekly-report`, porque Gmail no muestra imágenes en data URI. **Si se renombra un PNG de la marca, se rompen los correos.**
+- **Fuera de este repo:**
+  - Los correos y el Excel del reporte (`aly-weekly-report/src/marca.py`).
+  - El kit de implementación (`~/Dev/Aly/entregables/kitgen/gen_kit.js`, lee `aly-logotipo-color.png` de esta carpeta).
+
+## Logos de los aliados
+
+- **Login**: el logo de Equimundo (el cuadrado de 640×640 que Laura Phillips-Alvarez mandó el 2026-07-29 para el perfil de WhatsApp del demo), debajo del formulario.
+- **Barra lateral**: debajo del logotipo de Aly, el logo del programa del bot seleccionado. Hoy solo Apapáchar tiene (el «Programa apapáchar» que Milena Yazo mandó el 2026-08-03). Para sumarle uno a otro bot: el PNG en `assets/logos/` y `"logo": ("archivo.png", "texto alternativo")` en su entrada de `utils/bots.py`.
 - Van embebidos como data URI (`utils/branding.py`), no con `st.image`, para ubicarlos dentro de los bloques de marca. Por eso los PNG van chicos: recortados, a 360 px y con paleta reducida. `_resolve_bot_options()` corre antes de dibujar la marca, porque el logo depende del bot elegido.
 
 ## Despliegue

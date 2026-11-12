@@ -200,7 +200,7 @@ def _render_summaries(df_convs):
         label   = f"🗨️  {fecha}"
         with st.expander(label):
             st.html(
-                f'<p style="font-family:\'Open Sans\',sans-serif;font-size:0.875rem;'
+                f'<p style="font-family:\'Figtree\',sans-serif;font-size:0.875rem;'
                 f'color:{COLORS["text"]};line-height:1.7;margin:0">{summary}</p>'
             )
     if not has_any:
@@ -218,11 +218,11 @@ def _render_chat_bubble(role, text, ts):
     <div style="display:flex;justify-content:{align};margin-bottom:0.5rem">
       <div style="max-width:75%;background:{bg};border-radius:12px;
            padding:0.6rem 0.85rem;box-shadow:0 1px 2px rgba(0,0,0,0.06)">
-        <div style="font-family:'Open Sans',sans-serif;font-size:0.72rem;
+        <div style="font-family:'Figtree',sans-serif;font-size:0.72rem;
              font-weight:700;color:{meta_color};margin-bottom:0.2rem">{role_label}</div>
-        <div style="font-family:'Open Sans',sans-serif;font-size:0.875rem;
+        <div style="font-family:'Figtree',sans-serif;font-size:0.875rem;
              color:{txt_color};line-height:1.6">{text}</div>
-        <div style="font-family:'Open Sans',sans-serif;font-size:0.68rem;
+        <div style="font-family:'Figtree',sans-serif;font-size:0.68rem;
              color:{meta_color};margin-top:0.3rem;text-align:right">{ts}</div>
       </div>
     </div>

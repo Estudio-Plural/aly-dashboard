@@ -83,11 +83,11 @@ if df_keywords.empty:
         <div style="background:{COLORS['bg_card']};border:1px solid {COLORS['border']};
              border-radius:10px;padding:2rem 1.5rem;text-align:center;margin-bottom:1rem">
             <div style="font-size:2rem;margin-bottom:0.5rem">💬</div>
-            <p style="font-family:'Open Sans',sans-serif;font-size:0.95rem;
+            <p style="font-family:'Figtree',sans-serif;font-size:0.95rem;
                color:{COLORS['text']};font-weight:600;margin:0 0 0.25rem">
                 {t('top_keywords')}
             </p>
-            <p style="font-family:'Open Sans',sans-serif;font-size:0.82rem;
+            <p style="font-family:'Figtree',sans-serif;font-size:0.82rem;
                color:{COLORS['text_secondary']};margin:0">
                 {t('no_keywords_yet')}
             </p>
@@ -107,7 +107,7 @@ else:
 
     with col_table:
         st.markdown(
-            f'<p style="font-family:\'Open Sans\',sans-serif;font-size:0.72rem;'
+            f'<p style="font-family:\'Figtree\',sans-serif;font-size:0.72rem;'
             f'font-weight:700;text-transform:uppercase;letter-spacing:0.08em;'
             f'color:{COLORS["text_muted"]};margin-bottom:0.5rem">Top 30</p>',
             unsafe_allow_html=True,
@@ -136,11 +136,11 @@ if df_summaries.empty:
         <div style="background:{COLORS['bg_card']};border:1px solid {COLORS['border']};
              border-radius:10px;padding:2rem 1.5rem;text-align:center">
             <div style="font-size:2rem;margin-bottom:0.5rem">📝</div>
-            <p style="font-family:'Open Sans',sans-serif;font-size:0.95rem;
+            <p style="font-family:'Figtree',sans-serif;font-size:0.95rem;
                color:{COLORS['text']};font-weight:600;margin:0 0 0.25rem">
                 {t('recent_summaries')}
             </p>
-            <p style="font-family:'Open Sans',sans-serif;font-size:0.82rem;
+            <p style="font-family:'Figtree',sans-serif;font-size:0.82rem;
                color:{COLORS['text_secondary']};margin:0">
                 Los resúmenes aparecerán aquí cuando el agente los genere.
             </p>
@@ -161,7 +161,7 @@ else:
 
         with st.expander(label):
             st.markdown(
-                f'<p style="font-family:\'Open Sans\',sans-serif;font-size:0.875rem;'
+                f'<p style="font-family:\'Figtree\',sans-serif;font-size:0.875rem;'
                 f'color:{COLORS["text"]};line-height:1.7;margin:0">{summary}</p>',
                 unsafe_allow_html=True,
             )

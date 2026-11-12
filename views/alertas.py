@@ -112,7 +112,7 @@ if df_flags.empty:
     d2 = datetime.date.fromisoformat(date_to) - datetime.timedelta(days=1)
     with card("sin-alertas", t("alerts_list_title"), icon_svg=KPI_ICONS["flag"]):
         st.markdown(
-            f'<p style="font-family:\'Open Sans\',sans-serif;font-size:1rem;font-weight:600;'
+            f'<p style="font-family:\'Figtree\',sans-serif;font-size:1rem;font-weight:600;'
             f'color:{COLORS["text"]};margin:0.25rem 0 0.35rem">'
             f'{t("no_alerts_range").format(d1=_fmt_day(d1), d2=_fmt_day(d2))}</p>',
             unsafe_allow_html=True,
@@ -219,19 +219,19 @@ with card("lista", t("alerts_list_title"),
         with st.expander(label):
             color = COLORS["red"] if severity == "red" else COLORS["text"]
             st.markdown(
-                f'<p style="font-family:\'Open Sans\',sans-serif;font-size:0.72rem;'
+                f'<p style="font-family:\'Figtree\',sans-serif;font-size:0.72rem;'
                 f'font-weight:700;text-transform:uppercase;letter-spacing:0.06em;'
                 f'color:{COLORS["text_muted"]};margin:0 0 0.25rem">{t("flag_label")}</p>'
-                f'<p style="font-family:\'Open Sans\',sans-serif;font-size:0.9rem;'
+                f'<p style="font-family:\'Figtree\',sans-serif;font-size:0.9rem;'
                 f'color:{color};margin:0 0 0.75rem">{flag}</p>',
                 unsafe_allow_html=True,
             )
             if summary:
                 st.markdown(
-                    f'<p style="font-family:\'Open Sans\',sans-serif;font-size:0.72rem;'
+                    f'<p style="font-family:\'Figtree\',sans-serif;font-size:0.72rem;'
                     f'font-weight:700;text-transform:uppercase;letter-spacing:0.06em;'
                     f'color:{COLORS["text_muted"]};margin:0 0 0.25rem">{t("summary_label")}</p>'
-                    f'<p style="font-family:\'Open Sans\',sans-serif;font-size:0.9rem;'
+                    f'<p style="font-family:\'Figtree\',sans-serif;font-size:0.9rem;'
                     f'color:{COLORS["text"]};line-height:1.6;margin:0 0 0.5rem">{summary}</p>',
                     unsafe_allow_html=True,
                 )

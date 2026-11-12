@@ -5,25 +5,35 @@ from contextlib import contextmanager
 import streamlit as st
 
 COLORS = {
-    "bg_app":        "#F7F8FA",
+    # Marca Aly (assets/brand/, CLAUDE.md «Marca»). Índigo = la voz de Aly;
+    # girasol = la semilla; crema/papel = el fondo cálido.
+    "indigo":        "#2A2380",
+    "girasol":       "#FFC83D",
+    "crema":         "#FFF9EC",
+    "bg_app":        "#FBF8F2",
     "bg_sidebar":    "#FFFFFF",
-    "bg_sidebar_alt":"#FAFBFC",
+    "bg_sidebar_alt":"#F5F3FC",
     "bg_card":       "#FFFFFF",
-    "border":        "#E5E7EB",
-    "border_strong": "#D1D5DB",
-    "accent":        "#0273e5",
-    "accent_soft":   "#EFF6FF",
-    "navy":          "#110079",
-    "green":         "#91EBF4",
-    "red":           "#F15B22",
-    "yellow":        "#FFCF24",
-    "positive":      "#22C55E",
-    "negative":      "#F15B22",
-    "text":          "#0C1214",
-    # Grises oscuros a propósito: el gris lavado (#9CA3AF) no se leía en
-    # pantallas con brillo bajo. Nada de texto más claro que text_muted.
-    "text_secondary":"#374151",
-    "text_muted":    "#4B5563",
+    "border":        "#E9E4DA",
+    "border_strong": "#D6CFC0",
+    # Datos e interacción: un índigo más claro que el de la marca para que las
+    # barras no se vean negras.
+    "accent":        "#4B44C6",
+    "accent_soft":   "#EEECFB",
+    "navy":          "#2A2380",
+    "green":         "#3FB68B",
+    "red":           "#C8341F",
+    "yellow":        "#FFC83D",
+    "positive":      "#177245",
+    "negative":      "#C8341F",
+    # Grises oscuros a propósito: el gris lavado no se leía en pantallas con
+    # brillo bajo. Nada de texto más claro que text_muted.
+    "text":          "#1B1838",
+    "text_secondary":"#36324D",
+    "text_muted":    "#4A4560",
+    # Rampa de conteos (mapa de calor, coropleta): de papel a índigo.
+    "ramp":          ["#F1EEE6", "#E2DFF8", "#B5AEEE", "#7A71DC", "#4B44C6"],
+    "no_data":       "#ECE7DD",
 }
 
 
@@ -31,40 +41,43 @@ def inject():
     css = """
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,400..800;1,400..800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400..600,0..1,-50..200" rel="stylesheet">
 
     <style>
     /* ── Variables ──────────────────────────────────────────────────────── */
     :root {
-        --bg-app:         #F7F8FA;
+        --bg-app:         #FBF8F2;
         --bg-sidebar:     #FFFFFF;
-        --bg-sidebar-alt: #FAFBFC;
+        --bg-sidebar-alt: #F5F3FC;
         --bg-card:        #FFFFFF;
-        --border:         #E5E7EB;
-        --border-strong:  #D1D5DB;
-        --accent:         #0273e5;
-        --accent-soft:    #EFF6FF;
-        --accent-navy:    #110079;
-        --accent-green:   #91EBF4;
-        --accent-red:     #F15B22;
-        --accent-yellow:  #FFCF24;
-        --positive:       #22C55E;
-        --negative:       #F15B22;
-        --text:           #0C1214;
-        --text-secondary: #374151;
-        --text-muted:     #4B5563;
+        --border:         #E9E4DA;
+        --border-strong:  #D6CFC0;
+        --accent:         #4B44C6;
+        --accent-soft:    #EEECFB;
+        --accent-navy:    #2A2380;
+        --indigo:         #2A2380;
+        --girasol:        #FFC83D;
+        --crema:          #FFF9EC;
+        --accent-green:   #3FB68B;
+        --accent-red:     #C8341F;
+        --accent-yellow:  #FFC83D;
+        --positive:       #177245;
+        --negative:       #C8341F;
+        --text:           #1B1838;
+        --text-secondary: #36324D;
+        --text-muted:     #4A4560;
         --radius:         10px;
-        --shadow:         0 1px 3px rgba(17,24,39,0.06), 0 1px 2px rgba(17,24,39,0.04);
-        --shadow-md:      0 4px 14px rgba(17,24,39,0.08);
-        --shadow-sidebar: 1px 0 0 rgba(17,24,39,0.05);
+        --shadow:         0 1px 3px rgba(42,35,128,0.06), 0 1px 2px rgba(42,35,128,0.04);
+        --shadow-md:      0 6px 18px rgba(42,35,128,0.10);
+        --shadow-sidebar: 1px 0 0 rgba(42,35,128,0.05);
     }
 
     /* ── Global reset ───────────────────────────────────────────────────── */
     html, body, [class*="css"], .stApp {
         background-color: var(--bg-app) !important;
         color: var(--text) !important;
-        font-family: 'Open Sans', sans-serif !important;
+        font-family: 'Figtree', system-ui, sans-serif !important;
     }
 
     /* Hide Streamlit chrome */
@@ -78,7 +91,7 @@ def inject():
         box-shadow: var(--shadow-sidebar) !important;
     }
     [data-testid="stSidebar"] * {
-        font-family: 'Open Sans', sans-serif !important;
+        font-family: 'Figtree', system-ui, sans-serif !important;
         color: var(--text) !important;
     }
     /* Material icons must keep their own font so the ligatures resolve */
@@ -107,7 +120,7 @@ def inject():
     [data-testid="stSidebar"] h2,
     [data-testid="stSidebar"] h3 {
         color: var(--text) !important;
-        font-family: 'Oswald', sans-serif !important;
+        font-family: 'Figtree', system-ui, sans-serif !important;
     }
 
     /* Hide Streamlit's default page nav — we render our own */
@@ -150,7 +163,7 @@ def inject():
 
     /* ── Custom sidebar nav (rendered manually in filters.py) ──────────── */
     .nav-section {
-        font-family: 'Open Sans', sans-serif !important;
+        font-family: 'Figtree', system-ui, sans-serif !important;
         font-size: 0.64rem !important;
         font-weight: 700 !important;
         letter-spacing: 0.12em !important;
@@ -160,13 +173,13 @@ def inject():
         margin-top: 0.5rem !important;
     }
     .bot-locked {
-        font-family: 'Open Sans', sans-serif;
+        font-family: 'Figtree', system-ui, sans-serif;
         font-size: 0.66rem;
         text-transform: uppercase;
         letter-spacing: 0.06em;
         color: var(--text-muted);
-        background: #F3F4F6;
-        border: 1px solid #E5E7EB;
+        background: var(--bg-sidebar-alt);
+        border: 1px solid var(--border);
         border-radius: 8px;
         padding: 0.4rem 0.6rem;
         line-height: 1.5;
@@ -202,9 +215,9 @@ def inject():
     [data-testid="stSidebar"] a[data-testid="stPageLink-NavLink"][aria-current="page"],
     [data-testid="stSidebar"] .stPageLink--active a {
         background: var(--accent-soft) !important;
-        color: var(--accent) !important;
-        font-weight: 600 !important;
-        box-shadow: inset 2px 0 0 var(--accent) !important;
+        color: var(--indigo) !important;
+        font-weight: 700 !important;
+        box-shadow: inset 3px 0 0 var(--girasol) !important;
     }
     [data-testid="stSidebar"] [data-testid="stPageLink"] a span,
     [data-testid="stSidebar"] a[data-testid="stPageLink-NavLink"] span {
@@ -221,15 +234,15 @@ def inject():
 
     /* ── Headings ───────────────────────────────────────────────────────── */
     h1 {
-        font-family: 'Oswald', sans-serif !important;
+        font-family: 'Figtree', system-ui, sans-serif !important;
         font-size: 1.75rem !important;
-        font-weight: 600 !important;
+        font-weight: 800 !important;
         color: var(--text) !important;
-        letter-spacing: 0.01em !important;
+        letter-spacing: -0.015em !important;
         margin-bottom: 0.25rem !important;
     }
     h2, h3 {
-        font-family: 'Open Sans', sans-serif !important;
+        font-family: 'Figtree', system-ui, sans-serif !important;
         color: var(--text-secondary) !important;
     }
 
@@ -247,7 +260,7 @@ def inject():
         transform: translateY(-1px) !important;
     }
     [data-testid="metric-container"] [data-testid="stMetricLabel"] p {
-        font-family: 'Open Sans', sans-serif !important;
+        font-family: 'Figtree', system-ui, sans-serif !important;
         font-size: 0.7rem !important;
         font-weight: 700 !important;
         color: var(--text-muted) !important;
@@ -255,9 +268,9 @@ def inject():
         letter-spacing: 0.07em !important;
     }
     [data-testid="metric-container"] [data-testid="stMetricValue"] {
-        font-family: 'Oswald', sans-serif !important;
+        font-family: 'Figtree', system-ui, sans-serif !important;
         font-size: 2.1rem !important;
-        font-weight: 600 !important;
+        font-weight: 800 !important;
         color: var(--text) !important;
         font-variant-numeric: tabular-nums !important;
         line-height: 1.1 !important;
@@ -299,7 +312,7 @@ def inject():
         margin-bottom: 0.35rem;
     }
     .kpi-card__label {
-        font-family: 'Open Sans', sans-serif;
+        font-family: 'Figtree', system-ui, sans-serif;
         font-size: 0.68rem;
         font-weight: 700;
         color: var(--text-muted);
@@ -313,13 +326,13 @@ def inject():
         line-height: 0;
     }
     .kpi-card__value {
-        font-family: 'Oswald', sans-serif;
+        font-family: 'Figtree', system-ui, sans-serif;
         font-size: 2.1rem;
-        font-weight: 600;
+        font-weight: 800;
         color: var(--text);
         font-variant-numeric: tabular-nums;
         line-height: 1.1;
-        letter-spacing: 0.01em;
+        letter-spacing: -0.02em;
     }
     .kpi-card__delta-row {
         display: flex;
@@ -332,7 +345,7 @@ def inject():
         display: inline-flex;
         align-items: center;
         gap: 0.25rem;
-        font-family: 'Open Sans', sans-serif;
+        font-family: 'Figtree', system-ui, sans-serif;
         font-size: 0.72rem;
         font-weight: 700;
         letter-spacing: 0.02em;
@@ -351,7 +364,7 @@ def inject():
         line-height: 1;
     }
     .kpi-card__delta-label {
-        font-family: 'Open Sans', sans-serif;
+        font-family: 'Figtree', system-ui, sans-serif;
         font-size: 0.7rem;
         color: var(--text-muted);
         font-weight: 500;
@@ -363,7 +376,7 @@ def inject():
         margin-top: 0.6rem;
     }
     .kpi-card__caption {
-        font-family: 'Open Sans', sans-serif;
+        font-family: 'Figtree', system-ui, sans-serif;
         font-size: 0.72rem;
         line-height: 1.25;
         color: var(--text-muted);
@@ -375,7 +388,7 @@ def inject():
     /* Compact segmented control in the top bar */
     [data-testid="stSegmentedControl"] button {
         padding: 0.1rem 0.7rem !important;
-        font-family: 'Open Sans', sans-serif !important;
+        font-family: 'Figtree', system-ui, sans-serif !important;
         font-weight: 700 !important;
         font-size: 0.72rem !important;
         letter-spacing: 0.04em !important;
@@ -400,7 +413,7 @@ def inject():
         margin: 0.3rem 0 0 !important;
         font-size: 0.875rem;
         color: var(--text-secondary);
-        font-family: 'Open Sans', sans-serif;
+        font-family: 'Figtree', system-ui, sans-serif;
     }
     .page-header__chip {
         display: inline-flex;
@@ -410,7 +423,7 @@ def inject():
         background: var(--bg-card);
         border: 1px solid var(--border);
         border-radius: 999px;
-        font-family: 'Open Sans', sans-serif;
+        font-family: 'Figtree', system-ui, sans-serif;
         font-size: 0.78rem;
         color: var(--text-secondary);
         box-shadow: var(--shadow);
@@ -464,7 +477,7 @@ def inject():
         padding: 0.3rem 0.7rem;
         background: rgba(34,197,94,0.12);
         border-radius: 999px;
-        font-family: 'Open Sans', sans-serif;
+        font-family: 'Figtree', system-ui, sans-serif;
         font-size: 0.72rem;
         font-weight: 700;
         color: #15803D;
@@ -485,7 +498,7 @@ def inject():
         box-shadow: 0 0 0 3px rgba(34,197,94,0.18);
     }
     .hero__headline {
-        font-family: 'Open Sans', sans-serif;
+        font-family: 'Figtree', system-ui, sans-serif;
         font-size: 1.05rem;
         font-weight: 500;
         color: var(--text);
@@ -493,7 +506,7 @@ def inject():
         margin: 0;
     }
     .hero__headline b {
-        font-family: 'Oswald', sans-serif;
+        font-family: 'Figtree', system-ui, sans-serif;
         font-weight: 600;
         color: var(--text);
         font-size: 1.35rem;
@@ -508,7 +521,7 @@ def inject():
         gap: 0.35rem;
     }
     .hero__meta-label {
-        font-family: 'Open Sans', sans-serif;
+        font-family: 'Figtree', system-ui, sans-serif;
         font-size: 0.68rem;
         font-weight: 700;
         color: var(--text-muted);
@@ -516,7 +529,7 @@ def inject():
         letter-spacing: 0.08em;
     }
     .hero__meta-value {
-        font-family: 'Oswald', sans-serif;
+        font-family: 'Figtree', system-ui, sans-serif;
         font-size: 1.75rem;
         font-weight: 600;
         color: var(--accent);
@@ -536,9 +549,12 @@ def inject():
     .card-header__left {
         display: flex;
         align-items: center;
-        gap: 0.55rem;
+        flex-wrap: wrap;
+        column-gap: 0.55rem;
+        row-gap: 0.1rem;
         min-width: 0;
     }
+    .card-header__title { white-space: nowrap; }
     .card-header__icon {
         display: inline-flex;
         color: var(--accent);
@@ -548,14 +564,14 @@ def inject():
         line-height: 0;
     }
     .card-header__title {
-        font-family: 'Open Sans', sans-serif;
+        font-family: 'Figtree', system-ui, sans-serif;
         font-size: 0.92rem;
         font-weight: 700;
         color: var(--text);
         letter-spacing: 0.005em;
     }
     .card-header__subtitle {
-        font-family: 'Open Sans', sans-serif;
+        font-family: 'Figtree', system-ui, sans-serif;
         font-size: 0.76rem;
         color: var(--text-muted);
         font-weight: 500;
@@ -564,7 +580,7 @@ def inject():
         display: inline-flex;
         align-items: center;
         gap: 0.4rem;
-        font-family: 'Open Sans', sans-serif;
+        font-family: 'Figtree', system-ui, sans-serif;
         font-size: 0.72rem;
         color: var(--text-muted);
         font-weight: 500;
@@ -585,7 +601,7 @@ def inject():
         gap: 0.1rem;
     }
     .arc-gauge__label {
-        font-family: 'Open Sans', sans-serif;
+        font-family: 'Figtree', system-ui, sans-serif;
         font-size: 0.78rem;
         color: var(--text-secondary);
         font-weight: 600;
@@ -607,7 +623,7 @@ def inject():
         display: flex;
         align-items: center;
         justify-content: center;
-        font-family: 'Oswald', sans-serif;
+        font-family: 'Figtree', system-ui, sans-serif;
         font-size: 1.05rem;
         font-weight: 600;
         color: var(--text);
@@ -639,16 +655,16 @@ def inject():
         border-bottom: 0;
     }
     .stat-list__label {
-        font-family: 'Open Sans', sans-serif;
+        font-family: 'Figtree', system-ui, sans-serif;
         font-size: 0.8rem;
         font-weight: 600;
         color: var(--text-secondary);
     }
     .stat-list__value {
-        font-family: 'Oswald', sans-serif;
+        font-family: 'Figtree', system-ui, sans-serif;
         white-space: nowrap;
         font-size: 1.25rem;
-        font-weight: 600;
+        font-weight: 800;
         color: var(--text);
         font-variant-numeric: tabular-nums;
     }
@@ -703,7 +719,7 @@ def inject():
 
     /* Notas bajo una gráfica o un indicador: legibles, no grises lavados. */
     p.note {
-        font-family: 'Open Sans', sans-serif !important;
+        font-family: 'Figtree', system-ui, sans-serif !important;
         font-size: 0.8rem !important;
         line-height: 1.5 !important;
         color: var(--text-muted) !important;
@@ -723,7 +739,7 @@ def inject():
         border-radius: 12px;
         box-shadow: var(--shadow);
         margin-bottom: 1rem;
-        font-family: 'Open Sans', sans-serif;
+        font-family: 'Figtree', system-ui, sans-serif;
         font-size: 0.84rem;
         color: var(--text-secondary);
     }
@@ -748,7 +764,7 @@ def inject():
         background: transparent !important;
     }
     [data-testid="stTabs"] [data-baseweb="tab"] {
-        font-family: 'Open Sans', sans-serif !important;
+        font-family: 'Figtree', system-ui, sans-serif !important;
         font-size: 0.85rem !important;
         font-weight: 600 !important;
         color: var(--text-secondary) !important;
@@ -765,11 +781,11 @@ def inject():
     /* ── Buttons ─────────────────────────────────────────────────────────── */
     .stButton > button,
     .stFormSubmitButton > button {
-        background-color: var(--accent) !important;
+        background-color: var(--indigo) !important;
         color: #FFFFFF !important;
         border: none !important;
         border-radius: 8px !important;
-        font-family: 'Open Sans', sans-serif !important;
+        font-family: 'Figtree', system-ui, sans-serif !important;
         font-size: 0.85rem !important;
         font-weight: 600 !important;
         padding: 0.45rem 1.25rem !important;
@@ -778,14 +794,14 @@ def inject():
     .stButton > button:hover,
     .stFormSubmitButton > button:hover {
         opacity: 0.9 !important;
-        box-shadow: 0 2px 8px rgba(2,115,229,0.35) !important;
+        box-shadow: 0 2px 10px rgba(42,35,128,0.30) !important;
     }
     .stDownloadButton > button {
         background-color: transparent !important;
         color: var(--accent) !important;
         border: 1.5px solid var(--accent) !important;
         border-radius: 8px !important;
-        font-family: 'Open Sans', sans-serif !important;
+        font-family: 'Figtree', system-ui, sans-serif !important;
         font-size: 0.85rem !important;
         font-weight: 600 !important;
     }
@@ -842,7 +858,7 @@ def inject():
 def section_label(text: str):
     """Small all-caps section divider label."""
     st.markdown(
-        f'<div style="font-family:\'Open Sans\',sans-serif;font-size:0.7rem;'
+        f'<div style="font-family:\'Figtree\',sans-serif;font-size:0.7rem;'
         f'font-weight:700;text-transform:uppercase;letter-spacing:0.1em;'
         f'color:{COLORS["text_muted"]};padding-bottom:0.4rem;border-bottom:1px solid {COLORS["border"]};'
         f'margin-bottom:1rem;width:100%">{text}</div>',

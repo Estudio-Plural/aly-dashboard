@@ -31,26 +31,16 @@ NAV_ITEMS = [
 
 
 def _render_logo(bot_id=None):
+    """Logotipo de Aly (assets/brand/) y, debajo, el logo del programa."""
+    from utils.branding import brand_data_uri
+
+    uri = brand_data_uri("aly-logotipo.svg")
     st.markdown(
-        """
-        <div style="padding:0.5rem 0 1.25rem;display:flex;align-items:center;gap:0.65rem">
-            <div style="
-                width:34px;height:34px;border-radius:9px;
-                background:linear-gradient(135deg,#0273e5 0%,#110079 100%);
-                display:flex;align-items:center;justify-content:center;
-                box-shadow:0 2px 6px rgba(2,115,229,0.25)">
-                <span style="font-family:'Oswald',sans-serif;font-size:1.1rem;
-                    font-weight:700;color:#FFFFFF;letter-spacing:0.02em">A</span>
-            </div>
-            <div style="display:flex;flex-direction:column;line-height:1.1">
-                <span style="font-family:'Oswald',sans-serif;font-size:1.35rem;
-                    font-weight:600;color:#0C1214;letter-spacing:0.02em">Aly</span>
-                <span style="font-family:'Open Sans',sans-serif;font-size:0.66rem;
-                    color:#4B5563;text-transform:uppercase;letter-spacing:0.09em;
-                    margin-top:0.1rem">Dashboard</span>
-            </div>
-        </div>
-        """,
+        f'<div style="padding:0.35rem 0 1.1rem;display:flex;flex-direction:column;gap:0.35rem">'
+        f'<img src="{uri}" alt="Aly" style="height:40px;width:auto;align-self:flex-start;display:block">'
+        f'<span style="font-family:\'Figtree\',sans-serif;font-size:0.72rem;font-weight:600;'
+        f'color:{COLORS["text_muted"]};letter-spacing:0.02em">{t("brand_tagline")}</span>'
+        f'</div>',
         unsafe_allow_html=True,
     )
     _render_program_logo(bot_id)
@@ -159,7 +149,7 @@ def render_sidebar():
 
         # ── Date filters ──────────────────────────────────────────────────────
         st.markdown(
-            '<p style="font-family:\'Open Sans\',sans-serif;font-size:0.66rem;'
+            '<p style="font-family:\'Figtree\',sans-serif;font-size:0.66rem;'
             'font-weight:700;text-transform:uppercase;letter-spacing:0.1em;'
             f'color:{COLORS["text_muted"]};margin-bottom:0.5rem">' + t("filters") + '</p>',
             unsafe_allow_html=True,
@@ -196,7 +186,7 @@ def render_sidebar():
             role_label = t(f"role_{auth_role}") if auth_role else ""
             st.markdown(
                 f'<div style="margin-top:1.25rem;padding-top:0.75rem;'
-                f'border-top:1px solid {COLORS["border"]};font-family:\'Open Sans\',sans-serif">'
+                f'border-top:1px solid {COLORS["border"]};font-family:\'Figtree\',sans-serif">'
                 f'<div style="font-size:0.62rem;text-transform:uppercase;'
                 f'letter-spacing:0.08em;color:{COLORS["text_muted"]}">{t("logged_in_as")}</div>'
                 f'<div style="font-size:0.85rem;font-weight:600;color:{COLORS["text"]}">{auth_name}</div>'

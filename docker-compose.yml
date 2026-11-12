@@ -47,6 +47,8 @@ services:
     volumes:
       # La carpeta, por lo mismo que .streamlit arriba.
       - ./caddy:/etc/caddy:ro
+      # La marca, para servirla en /marca/ (logo de los correos).
+      - ./assets/brand:/srv/marca:ro
       # Certificados y estado de ACME: sobreviven a cada despliegue.
       - caddy_data:/data
       - caddy_config:/config
