@@ -16,7 +16,7 @@ python3 -m streamlit run app.py
 ## Proyecto
 Dashboard operativo privado para **Apapáchar** (chatbot WhatsApp RAG, crianza 0-5 años, Fundación Apapacho). Marca visible: **Aly**.
 
-**Multi-bot — alcance del dashboard:** la DB de Supabase es compartida. Las 3 tablas (`users_interactions`, `users_data`, `conversations_data`) tienen columna `bot_id` (type `text`, `NOT NULL`, default `''`). El bot escribe `'apapachar'`, `'demo'` o `'mexico'` (nuevo desde 2026-07-29) según `BOT_ID` env var.
+**Multi-bot — alcance del dashboard:** la DB de Supabase es compartida. Las 3 tablas (`users_interactions`, `users_data`, `conversations_data`) tienen columna `bot_id` (type `text`, `NOT NULL`, default `''`). El bot escribe `'apapachar'`, `'demo'` o `'mexico'` (nuevo desde 2026-07-29) según el `botId` de cada pedido (una sola API atiende a los tres bots).
 
 El dashboard **detecta automáticamente** los `bot_id` disponibles en la DB (`utils/db.py:get_available_bot_ids()`) y muestra un **selector en el sidebar** (arriba de los filtros de fecha). El usuario elige qué bot ver; todas las queries filtran por el `bot_id` seleccionado. El valor seleccionado vive en `st.session_state["selected_bot"]` y se pasa via `get_filters()["bot_id"]`.
 
@@ -61,9 +61,9 @@ implícita por `bot_id`, no un esquema único. Estado al **2026-08-20** (las not
   en servicio en el Estado de México**, no madre/padre — comparte pipeline con Apapáchar pero
   NADA de su contenido (ver `src/Constants/MexicoAgentPrompts.ts` en el repo del bot).
   Número `+1 262-405-0527`.
-  **Al 2026-08-20 sigue sin tráfico real** (ver *Estado de los datos de `mexico`* abajo) y su
-  onboarding sigue clonado del `demo`: no pide género ni región. El selector de bot
-  (`get_available_bot_ids()`) ya lo detecta automáticamente — no requiere cambio de código.
+  Desde 2026-09-22 la atiende el webhook de Meta de Aly, con onboarding propio
+  (`Aly/src/Constants/MetaOnboarding.ts`); la fila de `users_data` nace al aceptar el aviso de
+  privacidad. El selector de bot (`get_available_bot_ids()`) la detecta automáticamente.
 - **`demo`**: sin onboarding de género/región (heredado, sin cambios hoy).
 
 **Lista de regiones de `apapachar`** pasó de 10 (sin prefijo, ej. `"Tolima"`) a **17, todas con
@@ -92,20 +92,12 @@ etiquetado y sin "% del país" (una métrica que no significa nada sin GeoJSON),
 **Cuando Semillas defina su lista de regiones**, agregar el GeoJSON, un `choropleth_mexico()` en
 `components/charts.py` y cambiar `BOTS["mexico"]["geo"]` a `"mexico"`; no hay que tocar la página.
 
-### Estado de los datos de `mexico` (verificado 2026-08-20)
-La tabla cruda tiene 128 interacciones / 64 conversaciones bajo `bot_id='mexico'`, pero
-**~98% es ruido de `aly-evals`**: 126 de esas interacciones vienen de `client_number='eval'` y
-las 64 conversaciones son todas `eval-mexico-v*-...`. `_date_filter()` ya las excluye, así que
-**lo que el dashboard muestra hoy para México es 1 usuario / 2 mensajes / 1 conversación** — y
-esa única fila también es de prueba: `Lorena Nova`, `country='DEMO'`, `region='PRUEBAS'`,
-del 2026-07-30. No hay tráfico real de docentes todavía; el dashboard está listo y esperando.
-
-**Bug del onboarding de México — `users_data.gender` guarda el script, no el resultado.** La
-única fila de `mexico` tiene en `gender` el **código JavaScript literal** del bloque de Typebot
-(`let genderInput = 1\ngenderInput = genderInput.toLowerCase()...`) en vez de `"Hombre"`/
-`"Mujer"`/`"Otro"`. El bloque no se está evaluando: se guarda como texto. Hay que arreglarlo en
-Typebot **antes** de que entre tráfico real, o toda la demografía de género de Semillas nace
-corrupta. Es distinto del caveat de género de `apapachar` (ese guardaba vacío, no el script).
+### Datos de `mexico` anteriores al webhook de Meta (2026-09-22)
+Casi todas las filas de esa época son de `aly-evals` (`client_number='eval'`,
+`conversation_id` `eval-mexico-v*-...`), y `_date_filter()` las excluye. La única fila de
+`users_data` de entonces (`country='DEMO'`, `region='PRUEBAS'`, del 2026-07-30) es de prueba y
+tiene en `gender` el **código JavaScript literal** del bloque de Typebot en vez de un valor: no
+usarla para demografía. Es distinto del caveat de género de `apapachar` (ese guardaba vacío).
 
 ---
 
@@ -120,7 +112,7 @@ corrupta. Es distinto del caveat de género de `apapachar` (ese guardaba vacío,
 
 ## Estructura de archivos
 ```
-Aly_dashboard/
+aly-dashboard/
 ├── .env                        # DATABASE_URL, PSEUDONYM_KEY (GITIGNORED)
 ├── assets/brand/               # Marca Aly: SVG (fuente, de generar_marca.py) + PNG (WhatsApp, ícono, favicon, correo). Caddy la sirve en /marca/
 ├── assets/logos/               # equimundo.png (login) y apapachar.png (barra lateral con el bot Apapáchar); ~15 KB cada uno
@@ -155,8 +147,7 @@ Aly_dashboard/
 │   ├── pseudonym.py            # IDs seudónimos D-…/C-… con HMAC y PSEUDONYM_KEY — mismo algoritmo que aly-weekly-report
 │   ├── db.py                   # Todas las queries SQL
 │   ├── i18n.py                 # Traducciones ES/EN via t("key")
-│   ├── styles.py               # CSS global + COLORS dict + helpers: page_header, card (tarjeta con header adentro), note, status_strip, card_header, stat_list, arc_row, section_label (hero_banner queda sin uso)
-│   └── translate.py            # Traducción de keywords (usada en leaderboard)
+│   └── styles.py               # CSS global + COLORS dict + helpers: page_header, card (tarjeta con header adentro), note, status_strip, card_header, stat_list, arc_row, section_label (hero_banner queda sin uso)
 └── requirements.txt
 ```
 
@@ -219,9 +210,9 @@ Todas las queries de tiempo convierten a **GMT-5 (`America/Bogota`)** vía `AT T
 - `get_user_messages(user_number, from, to)` → df mensajes de un usuario (drill-down)
 
 ### Contenido bilingüe (ES/EN) de summary/keywords
-El bot (`Aly_Apapachar`) escribe en `conversations_data` dos columnas JSONB extra — `summary_i18n` y `keywords_i18n` (`{"es": ..., "en": ...}`, keywords como CSV por idioma) — además del `summary`/`keywords` original. Las queries que devuelven esos campos (`get_conversations_data`, `get_summaries`, `get_user_conversations`) aceptan `lang` ('es'/'en', default 'es') y leen la versión del idioma con **fallback al original** vía el helper `_i18n_expr()`. El `lang` viene de `st.session_state.get("lang", "es")` y lo pasan `conversaciones.py` y `leaderboard.py`.
+El bot (`Aly`) escribe en `conversations_data` dos columnas JSONB extra — `summary_i18n` y `keywords_i18n` (`{"es": ..., "en": ...}`, keywords como CSV por idioma) — además del `summary`/`keywords` original. Las queries que devuelven esos campos (`get_conversations_data`, `get_summaries`, `get_user_conversations`) aceptan `lang` ('es'/'en', default 'es') y leen la versión del idioma con **fallback al original** vía el helper `_i18n_expr()`. El `lang` viene de `st.session_state.get("lang", "es")` y lo pasan `conversaciones.py` y `leaderboard.py`.
 
-**Robustez:** `_conversations_has_i18n()` detecta (una vez por proceso, cacheado) si las columnas existen vía `information_schema`. Si la migración del bot **aún no corrió**, `_i18n_expr()` devuelve la columna original y nada se rompe; cuando la migración llegue con la app levantada, hace falta **Reboot app** para re-detectar. La traducción vive **del lado del bot**, no del dashboard — `utils/translate.py` (OpenRouter) quedó **sin uso** (el wordcloud de Leaderboard ahora toma los keywords ya traducidos de la DB).
+**Robustez:** `_conversations_has_i18n()` detecta (una vez por proceso, cacheado) si las columnas existen vía `information_schema`. Si la migración del bot **aún no corrió**, `_i18n_expr()` devuelve la columna original y nada se rompe; cuando la migración llegue con la app levantada, hace falta **Reboot app** para re-detectar. La traducción vive **del lado del bot**, no del dashboard — el wordcloud de Leaderboard toma los keywords ya traducidos de la DB.
 
 ---
 
@@ -323,15 +314,15 @@ La lógica de clasificación vive en `_classify_flag()` en `views/alertas.py`. T
 
 ---
 
-## Proyecto Complementario: Aly_Apapachar
+## Proyecto complementario: el bot Aly
 
-**Ubicación**: `/Users/daniel/Dev/Aly_Apapachar/`
+**Ubicación**: `/Users/daniel/Dev/Aly/` (`Estudio-Plural/Aly`; Bun + Elysia + LangGraph en proceso, Supabase, webhook de Meta).
 
-Aly_Apapachar es el bot WhatsApp (LangGraph + MongoDB + Twilio) que **genera los datos** que este dashboard visualiza.
+Aly es el bot de WhatsApp que **genera los datos** que este dashboard visualiza.
 
 ### Flujo de datos
 ```
-Aly_Apapachar (bot) → Conversation Closer → Supabase → este dashboard
+Aly (bot) → ConversationCloser (cron) → Supabase → este dashboard
 ```
 
 ### Contrato de datos
@@ -342,10 +333,10 @@ Aly_Apapachar (bot) → Conversation Closer → Supabase → este dashboard
 ### Quién escribe cada tabla
 | Tabla | Escrita por |
 |---|---|
-| `public.users_interactions` | `bot.py` (cada mensaje) |
-| `public.users_data` | `onboarding_agent.py` (registro nuevo usuario) |
-| `public.conversations_data` | Conversation Closer escribe la fila inicial. El **dashboard** escribe `reviewed_at` cuando el equipo marca la flag como revisada |
-| `vector_aly.rag_embeddings` | scripts de ingest |
+| `public.users_interactions` | `LangchainRAGService._saveHistory` (cada par pregunta/respuesta) |
+| `public.users_data` | el onboarding del webhook de Meta (al aceptar el aviso) y `POST /api/rag/records/userInfo` |
+| `public.conversations_data` | `ConversationCloserService` escribe la fila inicial. El **dashboard** escribe `reviewed_at` cuando el equipo marca la flag como revisada |
+| `vector_aly.rag_embeddings` | histórica; el bot ya no la escribe ni la consulta |
 
 ### Otros escritores (ruido conocido)
 `aly-evals` (repo hermano en `~/Dev/aly-evals/`) corre benchmarks contra el bot y termina escribiendo cientos de filas sentinel (`client_number IN ('eval','verify','smoke',…)`, `conversation_id LIKE 'eval-%' / 'verify-%' / 'debug-%' / …`). El filtro en `_date_filter()` las excluye automáticamente del dashboard. Antes del filtro (commit `d981c15`, 2026-05-27), `eval` solo aportaba 458 conversaciones / 918 mensajes.
