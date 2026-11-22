@@ -8,6 +8,10 @@ bcrypt — nunca en texto plano.
 Roles:
   - ``admin``     → ve todos los bots (selector completo).
   - ``apapachar`` → bloqueado al bot ``apapachar`` (datos de Colombia).
+  - ``mexico``    → bloqueado al bot ``mexico`` (Semillas de Igualdad).
+
+Una cuenta sin rol, o con un rol que no está en ``[roles]``, no ve ningún bot:
+``require_login`` la detiene con un aviso en vez de dejarla entrar.
 
 El mapeo rol→bots se define en la sección ``[roles]`` del secrets. ``"*"`` = todos
 los bots disponibles en la DB. Resuelto a ``None`` (sentinel "sin restricción")
@@ -169,6 +173,19 @@ def require_login() -> dict:
     roles = st.session_state.get("roles") or []
     role = roles[0] if roles else None
     allowed = _allowed_bots(role, config["roles"])
+
+    if allowed is not None and not allowed:
+        # Cuenta sin rol, o con un rol que no está en [roles]: antes caía al bot
+        # "apapachar" por el respaldo del selector y veía datos de Colombia.
+        # Sin programa asignado no se entra; solo queda cerrar sesión.
+        for clave in ("auth_role", "auth_allowed_bots", "selected_bot"):
+            st.session_state.pop(clave, None)
+        _, mid, _ = st.columns([1, 1.25, 1])
+        with mid:
+            _render_login_header()
+            st.error(t("no_program_access"))
+            authenticator.logout(t("logout"), location="main", key="logout_sin_programa")
+        st.stop()
 
     st.session_state["auth_role"] = role
     st.session_state["auth_allowed_bots"] = allowed
