@@ -110,8 +110,15 @@ def _resolve_bot_options() -> list:
 
     # Asegura que la selección actual sea válida para este rol (cubre cambio
     # de usuario en el mismo navegador tras logout/login).
+    if not bot_options:
+        # Sin ningún bot permitido no hay nada que mostrar. require_login ya
+        # detiene a las cuentas sin programa; esta es la segunda barrera, para
+        # que un respaldo nunca vuelva a abrirle Apapáchar a quien no lo tiene.
+        st.session_state.pop("selected_bot", None)
+        st.error(t("no_program_access"))
+        st.stop()
     if st.session_state.get("selected_bot") not in bot_options:
-        st.session_state["selected_bot"] = bot_options[0] if bot_options else "apapachar"
+        st.session_state["selected_bot"] = bot_options[0]
     return bot_options
 
 
