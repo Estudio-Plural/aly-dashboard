@@ -97,6 +97,7 @@ try:
     df_week  = db.get_weekly_active_users(date_from, date_to, bot_id=bot_id)
     cov      = db.get_answer_coverage(date_from, date_to, bot_id=bot_id)
     last_msg = db.get_last_activity(bot_id=bot_id)
+    util     = db.get_utility_survey(date_from, date_to, bot_id=bot_id)
 except Exception as e:
     st.error(f"Error de base de datos: {e}")
     st.stop()
@@ -296,6 +297,25 @@ with col_reg:
         note(t("registration_note"))
 
 st.markdown("<div style='margin:0.9rem 0 0'></div>", unsafe_allow_html=True)
+
+
+# ── Encuesta de utilidad ─────────────────────────────────────────────────────
+# Solo donde el bot la manda (hoy México) o ya hay respuestas: en Apapáchar sería
+# una tarjeta vacía. Sin la tabla (`util is None`) no se muestra nada.
+if util is not None and (bot_id == "mexico" or util["enviadas"] or util["respondidas"]):
+    with card("utilidad", t("utility_title"), subtitle=t("utility_sub"), icon_svg=KPI_ICONS["message"]):
+        if not util["enviadas"] and not util["respondidas"]:
+            st.info(t("utility_empty"))
+        else:
+            share = f"{round(100 * util['si'] / util['respondidas'])} %" if util["respondidas"] else "—"
+            stat_list([
+                {"label": t("utility_yes_share"), "value": share},
+                {"label": t("utility_answers"),   "value": f"{util['respondidas']:,} {t('of')} {util['enviadas']:,}"},
+                {"label": t("utility_yes_no"),    "value": f"{util['si']:,} · {util['no']:,}"},
+            ])
+        note(t("utility_note"))
+
+    st.markdown("<div style='margin:0.9rem 0 0'></div>", unsafe_allow_html=True)
 
 
 # ── Horario de uso: cerrado por defecto ──────────────────────────────────────

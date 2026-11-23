@@ -228,6 +228,38 @@ def get_answer_coverage(date_from=None, date_to=None, bot_id=None) -> dict:
     return {"preguntas": int(row["preguntas"]), "sin_info": int(row["sin_info"])}
 
 
+def get_utility_survey(date_from=None, date_to=None, bot_id=None):
+    """Encuesta de utilidad: «¿Te fue útil la información que te di hoy?», Sí / No.
+
+    La manda el bot al cerrar una conversación en la que la persona hizo una
+    pregunta, máximo una vez por semana por persona (hoy solo México, desde el
+    2026-11; ver `src/Constants/EncuestaUtilidad.ts` en el repo Aly). Una fila
+    de `public.encuesta_utilidad` por encuesta enviada.
+
+    Cuenta las encuestas ENVIADAS en el período (hora local) y cómo se
+    respondieron. Una respuesta cuyo envío no quedó registrado (`enviada_at`
+    NULL) entra por su `respondida_at`. Devuelve None si la tabla todavía no
+    existe: la migración se aplica a mano en el repo del bot.
+    """
+    where, params = _date_filter(
+        "COALESCE(enviada_at, respondida_at)", date_from, date_to,
+        client_col="user_number", conv_col=None, bot_id=bot_id,
+    )
+    query = f"""
+        SELECT COUNT(*) FILTER (WHERE enviada_at IS NOT NULL) AS enviadas,
+               COUNT(*) FILTER (WHERE respuesta IS NOT NULL)  AS respondidas,
+               COUNT(*) FILTER (WHERE respuesta = 'si')       AS si,
+               COUNT(*) FILTER (WHERE respuesta = 'no')       AS no
+        FROM public.encuesta_utilidad
+        {where}
+    """
+    try:
+        row = fetch_df(query, params).iloc[0]
+    except psycopg2.errors.UndefinedTable:
+        return None
+    return {k: int(row[k]) for k in ("enviadas", "respondidas", "si", "no")}
+
+
 def get_weekly_active_users(date_from=None, date_to=None, bot_id=None) -> pd.DataFrame:
     """Usuarios distintos que mandaron al menos un mensaje cada semana (lunes a domingo, hora local)."""
     where, params = _date_filter(

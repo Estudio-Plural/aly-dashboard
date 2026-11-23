@@ -181,6 +181,7 @@ Aly_dashboard/
 | `public.users_data` | `number`, `name`, `country`, `gender`, `region`, `email`, `created_at` |
 | `public.conversations_data` | `id` (PK), `conversation_id`, `user_number`, `conversation_date` (**timestamp SIN zona, guardado en UTC**), `summary`, `keywords`, `flags`, `flag_severity` (enum limpio: HIGH / MEDIUM / LOW / Operacional), `flag_reasoning` (texto libre), `messages_count`, `session`, `reviewed_at` (TIMESTAMPTZ — null si pendiente) |
 | `vector_aly.rag_embeddings` | `project`, `document_name`, `topics`, `entities`, `key_phrases`, `chunk_index` |
+| `public.encuesta_utilidad` | `bot_id`, `user_number`, `conversation_id`, `enviada_at`, `respuesta` (`si`/`no`), `respondida_at`. Una fila por encuesta enviada; la lee `get_utility_survey` para la tarjeta «Utilidad de Aly» de Inicio. Si la tabla no existe, la función devuelve `None` y la tarjeta no se dibuja |
 
 ---
 
@@ -349,6 +350,7 @@ Aly_Apapachar (bot) → Conversation Closer → Supabase → este dashboard
 | `public.users_data` | `onboarding_agent.py` (registro nuevo usuario) |
 | `public.conversations_data` | Conversation Closer escribe la fila inicial. El **dashboard** escribe `reviewed_at` cuando el equipo marca la flag como revisada |
 | `vector_aly.rag_embeddings` | scripts de ingest |
+| `public.encuesta_utilidad` | El bot (`EncuestaUtilidadService`, repo Aly): inserta al mandar la encuesta y escribe `respuesta` cuando la persona toca Sí o No. Hoy solo México |
 
 ### Otros escritores (ruido conocido)
 `aly-evals` (repo hermano en `~/Dev/aly-evals/`) corre benchmarks contra el bot y termina escribiendo cientos de filas sentinel (`client_number IN ('eval','verify','smoke',…)`, `conversation_id LIKE 'eval-%' / 'verify-%' / 'debug-%' / …`). El filtro en `_date_filter()` las excluye automáticamente del dashboard. Antes del filtro (commit `d981c15`, 2026-05-27), `eval` solo aportaba 458 conversaciones / 918 mensajes.
