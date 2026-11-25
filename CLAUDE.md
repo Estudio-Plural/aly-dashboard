@@ -4,6 +4,8 @@
 **Feature map** (qué features hay y qué archivos tocar para cada una; leerlo antes de explorar el repo): `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Proyectos/Código/Aly/Dashboard/00 - Feature Map aly-dashboard.md`
 Al agregar, mover o quitar una feature, actualizar su fila en ese mapa.
 
+**Reuniones** (notas de Granola, vault «Estudio Plural»): `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Estudio Plural/Granola/Aly/`, filtrando por `universo: Aly` en el frontmatter. Ninguna está clasificada como `proyecto: Aly dashboard`: las del panel caen en `Aly bot`, `Aly México - Semillas` o `Ali - Apapachar`. Leer las recientes antes de proponer o decidir algo.
+
 Notas en: `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Proyectos/Código/Aly/` (las del panel, en `Dashboard/`)
 Actualizar cuando cambien: arquitectura, stack, esquema Supabase, páginas/componentes, flujo de datos bot→dashboard.
 No actualizar por: bugfixes menores, ajustes de UI, cambios de copy.
