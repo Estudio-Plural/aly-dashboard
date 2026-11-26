@@ -11,6 +11,7 @@ import streamlit as st
 
 from utils.i18n import t
 from utils import db
+from utils.flags import alert_levels
 from utils.styles import COLORS, page_header, card, note
 from components.filters import get_filters
 from components.kpi_row import ICONS as KPI_ICONS
@@ -29,16 +30,11 @@ if df.empty:
     st.info(t("lb_no_data"))
     st.stop()
 
-# Count red+orange flags per user in Python (avoids phone number format mismatches)
-def _is_actionable_flag(val):
-    if not val or not isinstance(val, str):
-        return False
-    v = val.lower()
-    return any(kw in v for kw in ("high", "medium", "red", "rojo", "critico", "orange", "naranja", "warning", "advertencia"))
-
+# Count red+orange flags per user in Python (avoids phone number format mismatches).
+# Rojo = HIGH y naranja = MEDIUM según flag_severity (utils/flags.py).
 df_flags_raw = db.get_flags_data(date_from, date_to, bot_id=bot_id)
 if not df_flags_raw.empty:
-    df_flags_raw = df_flags_raw[df_flags_raw["flags"].apply(_is_actionable_flag)]
+    df_flags_raw = df_flags_raw[alert_levels(df_flags_raw).isin(["red", "orange"])]
     flag_counts = df_flags_raw.groupby("user_number").size().reset_index(name="n_flags")
     # Normalize: strip leading zeros / whitespace for robust matching
     flag_counts["user_number"] = flag_counts["user_number"].astype(str).str.strip()
