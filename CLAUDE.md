@@ -144,7 +144,7 @@ Aly_dashboard/
 │   ├── overview.py             # Inicio (desde 2026-11-12): H1 = programa (`bot_label`), franja de estado (alertas sin revisar + último mensaje recibido), 4 KPIs de seguimiento (personas activas con diferencia vs. período anterior, volvieron en 2+ semanas, % respondidas con el material, alertas sin revisar), actividad diaria en barras de un solo eje + «Volumen del período», usuarios activos por semana (eje por lunes, «Sem. 12 oct») + «Registro», y el horario de uso (heatmap) plegado en un expander. La gráfica diaria rellena días sin datos con 0, fija el eje X al rango y desactiva el zoom (ver Convenciones)
 │   ├── usuarios.py             # Demografía: 3 KPIs (personas activas, departamentos con usuarios «6 de 33» o regiones, nuevos registros). Las regiones se muestran sin el prefijo «Regional » (`display_region`) y agrupadas. Layout **según `bot_geo()`**: bots con mapa (apapachar) → 2:1 choropleth Colombia + ranking top 10; bots sin mapa (mexico, demo) → ranking top 15 a ancho completo. Al final, **Exportación sin identificar** (botón de Excel, ver sección propia)
 │   ├── conversaciones.py       # Keywords + resúmenes (no está en nav, en standby)
-│   ├── alertas.py              # Flags 🔴/🟠 (HIGH-/MEDIUM-). KPIs = lo que falta (rojas/naranjas SIN REVISAR, revisadas). Cada alerta es un expander (fecha GMT-5, usuario enmascarado, estado) con «marcar revisado» persistido en Supabase (reviewed_at); sin tabla ni conversation_id en pantalla (empieza con el teléfono). En cero: «sin alertas entre X e Y» + la última alerta del programa (`get_last_flag`). Export Excel con transcripción y teléfono completo (a propósito)
+│   ├── alertas.py              # Flags 🔴/🟠 (`flag_severity` HIGH/MEDIUM, vía utils/flags.py). KPIs = lo que falta (rojas/naranjas SIN REVISAR, revisadas). Cada alerta es un expander (fecha GMT-5, usuario enmascarado, estado) con «marcar revisado» persistido en Supabase (reviewed_at); sin tabla ni conversation_id en pantalla (empieza con el teléfono). En cero: «sin alertas entre X e Y» + la última alerta del programa (`get_last_flag`). Export Excel con transcripción y teléfono completo (a propósito)
 │   └── leaderboard.py          # «Conversaciones» en la nav (el archivo conserva el nombre por la URL /leaderboard). Tabla de las personas del período (hasta 200) + selector «Ver las conversaciones de…» (la casilla de la tabla también sirve); el detalle va en una tarjeta con tabs Resúmenes / Transcripciones / Nube (header con teléfono completo, a propósito). Sin podio ni top 10 (desde 2026-11-12)
 ├── components/
 │   ├── filters.py              # render_sidebar() (logo Aly, nav custom Material icons, bot selector role-aware, date pickers + presets 7d/30d/90d con on_click callbacks, "conectado como" + idioma ES/EN + logout). get_filters() lee session_state. Sin export — descarga vive en Alertas
@@ -156,6 +156,7 @@ Aly_dashboard/
 │   ├── auth.py                 # require_login(): login streamlit-authenticator + resolución rol→bots + logout. El login muestra el logo de Equimundo
 │   ├── branding.py             # logo_data_uri(): los logos de assets/logos embebidos como data URI
 │   ├── bots.py                 # Registro bot_id → {label, geo, weekly_deidentified, logo}: nombre legible, qué mapa aplica, si su Excel de los lunes va sin identificar y qué logo de programa va en la barra lateral
+│   ├── flags.py                # alert_level / alert_levels: rojo (HIGH) / naranja (MEDIUM) desde flag_severity, una sola regla para Alertas, Inicio y Conversaciones
 │   ├── export.py               # Excel de la exportación sin identificar (hojas Cómo leer / Mensajes / Conversaciones / Registros) + chequeo de que no quede ningún identificador crudo
 │   ├── pseudonym.py            # IDs seudónimos D-…/C-… con HMAC y PSEUDONYM_KEY — mismo algoritmo que aly-weekly-report
 │   ├── db.py                   # Todas las queries SQL
@@ -212,7 +213,7 @@ Todas las queries de tiempo convierten a **GMT-5 (`America/Bogota`)** vía `AT T
 - `get_kpi_deltas(from, to)` → dict deltas fraccionales vs período anterior
 - `get_conversations_data(from, to, lang="es")` → df completo de conversations_data
 - `get_summaries(from, to, limit, lang="es")` → df resúmenes recientes
-- `get_flags_data(from, to)` → df conversaciones con flags + `id` (PK) + `reviewed_at` (en GMT-5)
+- `get_flags_data(from, to)` → df conversaciones con flags + `id` (PK) + `flag_severity` + `reviewed_at` (en GMT-5)
 - `mark_flag_reviewed(row_id)` → UPDATE … SET reviewed_at = NOW() **WHERE id** (ver *Identidad de fila*)
 - `unmark_flag_reviewed(row_id)` → UPDATE … SET reviewed_at = NULL **WHERE id**
 - `get_flag_counts_by_user(from, to)` → df user_number/n_flags (solo HIGH-/MEDIUM-)
@@ -308,14 +309,16 @@ Pedido de Rachel para el M&E de Semillas: ID seudónimo, fecha/hora y alerta de 
 ---
 
 ## Clasificación de flags
-El campo `flags` en `conversations_data` es un string CSV con múltiples flags por conversación, cada una con prefijo de severidad:
-- `HIGH-<razón>` → 🔴 rojo (crítico)
-- `MEDIUM-<razón>` → 🟠 naranja (advertencia)
-- `LOW-<razón>` → ignorado en UI (no se muestra)
+Rojo o naranja se decide con **`flag_severity`**, el enum que escribe el bot al cerrar la conversación, igual que los correos de alertas de aly-weekly-report y la exportación sin identificar:
+- `HIGH` → 🔴 rojo (crítico)
+- `MEDIUM` → 🟠 naranja (advertencia)
+- `LOW` / `Operacional` → no es alerta (no se muestra)
 
-La lógica de clasificación vive en `_classify_flag()` en `views/alertas.py`. También se replica en `views/overview.py` (para la franja de estado y el KPI de alertas sin revisar) y `views/leaderboard.py` (para contar flags por usuario).
+La regla vive en **`utils/flags.py`** (`alert_level`, `alert_levels`) y la usan Alertas, Inicio (franja de estado y KPI de alertas sin revisar) y Conversaciones (alertas por persona). `get_flags_data` trae la columna.
 
-**Si el bot cambia el formato de estos campos, actualizar `_classify_flag()` en los 3 archivos.**
+**Nunca buscar palabras en `flags`.** Es un CSV con varias etiquetas (`HIGH-imminent-danger,LOW-shared-personal-info`) y hasta el 2026-11 cada página buscaba subcadenas: «LOW-shared-personal-info» salía roja porque «shared» contiene «red».
+
+**Si `flag_severity` viene vacío** (conversaciones cerradas antes del 2026-04-07, cuando el bot todavía no la escribía), se aplica la regla con la que el bot la calcula (`ConversationCloserService._getSeverity`): el prefijo `HIGH-` / `MEDIUM-` / `LOW-` de alguna etiqueta, etiqueta por etiqueta. Las etiquetas de esa época no tienen prefijo, así que no cuentan como alerta.
 
 ---
 

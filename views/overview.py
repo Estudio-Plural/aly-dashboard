@@ -12,6 +12,7 @@ import plotly.graph_objects as go
 from utils.i18n import t
 from utils import db
 from utils.bots import bot_label
+from utils.flags import alert_levels
 from utils.styles import (
     COLORS, page_header, stat_list, card, note, status_strip,
     _MONTHS_ES, _MONTHS_EN,
@@ -55,21 +56,6 @@ def _chart_layout(**overrides):
     return base
 
 
-def _classify_flag(val) -> str:
-    if not val or not isinstance(val, str):
-        return "other"
-    v = val.lower()
-    if "high" in v:
-        return "red"
-    if "medium" in v:
-        return "orange"
-    if "red" in v or "rojo" in v or "critico" in v or "crítico" in v:
-        return "red"
-    if "orange" in v or "naranja" in v or "warning" in v or "advertencia" in v:
-        return "orange"
-    return "other"
-
-
 # ── Page ─────────────────────────────────────────────────────────────────────
 
 filters = get_filters()
@@ -109,7 +95,7 @@ except Exception as e:
 # período, revisadas o no: marcar una como revisada no cambiaba nada aquí.
 n_alerts = n_pending = n_pending_red = 0
 if not df_flags.empty:
-    types = df_flags["flags"].apply(_classify_flag)
+    types = alert_levels(df_flags)
     actionable = df_flags[types.isin(["red", "orange"])]
     pending = actionable["reviewed_at"].isna() if "reviewed_at" in actionable else pd.Series(True, index=actionable.index)
     n_alerts      = len(actionable)

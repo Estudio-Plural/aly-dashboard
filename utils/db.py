@@ -773,6 +773,9 @@ def get_flags_data(date_from=None, date_to=None, bot_id=None) -> pd.DataFrame:
     usuario en días distintos (visto en apapachar y demo). Usar ``id`` — no
     ``conversation_id`` — como identidad de fila en la UI y en los updates de
     ``reviewed_at``.
+
+    Trae ``flag_severity``: rojo / naranja se decide con ella
+    (``utils/flags.py``), no buscando palabras en ``flags``.
     """
     where, params = _date_filter(
         "conversation_date", date_from, date_to,
@@ -780,7 +783,7 @@ def get_flags_data(date_from=None, date_to=None, bot_id=None) -> pd.DataFrame:
         client_col="user_number", bot_col="bot_id", bot_id=bot_id,
     )
     query = f"""
-        SELECT id, conversation_id, user_number, conversation_date, flags, summary,
+        SELECT id, conversation_id, user_number, conversation_date, flag_severity, flags, summary,
                reviewed_at AT TIME ZONE '{TZ}' AS reviewed_at
         FROM public.conversations_data
         {where}

@@ -10,6 +10,7 @@ from components.filters import get_filters
 from components.kpi_row import render as kpi_row, ICONS as KPI_ICONS
 from utils.i18n import t
 from utils import db
+from utils.flags import alert_level, alert_levels
 from utils.styles import COLORS, page_header, card, note, _MONTHS_ES, _MONTHS_EN
 
 filters   = get_filters()
@@ -26,24 +27,6 @@ def _mask(number: str) -> str:
     if len(s) >= 6:
         return f"{s[:4]}****{s[-2:]}"
     return s[:2] + "****" if len(s) >= 2 else "****"
-
-
-def _classify_flag(val: str) -> str:
-    """Classify flag as red / orange / other based on HIGH-/MEDIUM-/LOW- prefixes."""
-    if not val or not isinstance(val, str):
-        return "other"
-    v = val.lower()
-    # Primary: bot-emitted severity prefixes
-    if "high" in v:
-        return "red"
-    if "medium" in v:
-        return "orange"
-    # Fallback: legacy keyword detection
-    if "red" in v or "rojo" in v or "critico" in v or "crítico" in v:
-        return "red"
-    if "orange" in v or "naranja" in v or "warning" in v or "advertencia" in v:
-        return "orange"
-    return "other"
 
 
 def _flag_emoji(severity: str) -> str:
@@ -74,7 +57,8 @@ def _local(series: pd.Series) -> pd.Series:
 
 # ── Classify & enrich ─────────────────────────────────────────────────────────
 if not df_flags.empty:
-    df_flags["_tipo"] = df_flags["flags"].apply(_classify_flag)
+    # Rojo = HIGH y naranja = MEDIUM según flag_severity (utils/flags.py).
+    df_flags["_tipo"] = alert_levels(df_flags)
     # Only keep actionable flags (red and orange)
     df_flags = df_flags[df_flags["_tipo"].isin(["red", "orange"])].copy()
     # reviewed_at viene de Supabase. Es NaT cuando aún no se ha revisado.
@@ -122,11 +106,10 @@ if df_flags.empty:
         except Exception:
             last = {}
         if last:
-            sev = (str(last.get("flag_severity") or "").upper()
-                   or ("HIGH" if "high" in str(last.get("flags", "")).lower() else "MEDIUM"))
+            level = alert_level(last.get("flag_severity"), last.get("flags"))
             note(t("last_alert").format(
                 d=_fmt_day(last["conversation_date"]),
-                sev=t("sev_red") if sev == "HIGH" else t("sev_orange"),
+                sev=t("sev_red") if level == "red" else t("sev_orange"),
                 state=t("state_reviewed") if pd.notna(last.get("reviewed_at")) else t("state_pending"),
             ))
         else:
