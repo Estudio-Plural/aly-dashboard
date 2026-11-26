@@ -260,6 +260,36 @@ def get_utility_survey(date_from=None, date_to=None, bot_id=None):
     return {k: int(row[k]) for k in ("enviadas", "respondidas", "si", "no")}
 
 
+def get_utility_reasons(date_from=None, date_to=None, bot_id=None, limit=200):
+    """El porqué de la encuesta de utilidad (segunda pregunta, desde 2026-11-26).
+
+    Después de tocar Sí o No, Aly pregunta el porqué y guarda lo siguiente que
+    la persona escribe en `encuesta_utilidad.porque` (si fue una nota de voz,
+    con el prefijo «[audio] »). Ver `src/Constants/EncuestaUtilidad.ts` en el
+    repo Aly.
+
+    Devuelve un df porque_at (GMT-5) / respuesta / porque, el más reciente
+    primero, filtrado por la fecha del porqué. Sin el número: la tarjeta no
+    lo muestra. Devuelve None si la tabla o la columna todavía no existen (la
+    migración se aplica a mano en el repo del bot).
+    """
+    where, params = _date_filter(
+        "porque_at", date_from, date_to, extra="porque IS NOT NULL",
+        client_col="user_number", conv_col=None, bot_id=bot_id,
+    )
+    query = f"""
+        SELECT porque_at AT TIME ZONE '{TZ}' AS porque_at, respuesta, porque
+        FROM public.encuesta_utilidad
+        {where}
+        ORDER BY porque_at DESC
+        LIMIT %s
+    """
+    try:
+        return fetch_df(query, params + [int(limit)])
+    except (psycopg2.errors.UndefinedTable, psycopg2.errors.UndefinedColumn):
+        return None
+
+
 def get_weekly_active_users(date_from=None, date_to=None, bot_id=None) -> pd.DataFrame:
     """Usuarios distintos que mandaron al menos un mensaje cada semana (lunes a domingo, hora local)."""
     where, params = _date_filter(

@@ -98,6 +98,7 @@ try:
     cov      = db.get_answer_coverage(date_from, date_to, bot_id=bot_id)
     last_msg = db.get_last_activity(bot_id=bot_id)
     util     = db.get_utility_survey(date_from, date_to, bot_id=bot_id)
+    porques  = db.get_utility_reasons(date_from, date_to, bot_id=bot_id) if util is not None else None
 except Exception as e:
     st.error(f"Error de base de datos: {e}")
     st.stop()
@@ -313,6 +314,24 @@ if util is not None and (bot_id == "mexico" or util["enviadas"] or util["respond
                 {"label": t("utility_answers"),   "value": f"{util['respondidas']:,} {t('of')} {util['enviadas']:,}"},
                 {"label": t("utility_yes_no"),    "value": f"{util['si']:,} · {util['no']:,}"},
             ])
+        # El porqué (segunda pregunta, desde 2026-11-26). Sin la columna
+        # (`porques is None`) no se muestra nada.
+        if porques is not None:
+            st.markdown(f"**{t('utility_reasons_title')}** · {len(porques):,}")
+            if porques.empty:
+                note(t("utility_reasons_empty"))
+            else:
+                vista = pd.DataFrame({
+                    t("utility_reasons_date"): pd.to_datetime(porques["porque_at"]).dt.strftime("%d/%m/%Y %H:%M"),
+                    t("utility_reasons_answer"): porques["respuesta"].map({"si": t("utility_yes"), "no": t("utility_no")}),
+                    t("utility_reasons_text"): porques["porque"].astype(str).str.replace(
+                        r"^\[audio\] ", "🎙️ ", regex=True),
+                })
+                st.dataframe(
+                    vista, use_container_width=True, hide_index=True,
+                    height=min(38 + 35 * len(vista), 360),
+                    column_config={t("utility_reasons_text"): st.column_config.TextColumn(width="large")},
+                )
         note(t("utility_note"))
 
     st.markdown("<div style='margin:0.9rem 0 0'></div>", unsafe_allow_html=True)
