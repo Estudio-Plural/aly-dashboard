@@ -183,7 +183,7 @@ Aly_dashboard/
 | `public.users_data` | `number`, `name`, `country`, `gender`, `region`, `email`, `created_at` |
 | `public.conversations_data` | `id` (PK), `conversation_id`, `user_number`, `conversation_date` (**timestamp SIN zona, guardado en UTC**), `summary`, `keywords`, `flags`, `flag_severity` (enum limpio: HIGH / MEDIUM / LOW / Operacional), `flag_reasoning` (texto libre), `messages_count`, `session`, `reviewed_at` (TIMESTAMPTZ — null si pendiente) |
 | `vector_aly.rag_embeddings` | `project`, `document_name`, `topics`, `entities`, `key_phrases`, `chunk_index` |
-| `public.encuesta_utilidad` | `bot_id`, `user_number`, `conversation_id`, `enviada_at`, `respuesta` (`si`/`no`), `respondida_at`. Una fila por encuesta enviada; la lee `get_utility_survey` para la tarjeta «Utilidad de Aly» de Inicio. Si la tabla no existe, la función devuelve `None` y la tarjeta no se dibuja |
+| `public.encuesta_utilidad` | `bot_id`, `user_number`, `conversation_id`, `enviada_at`, `respuesta` (`si`/`no`), `respondida_at`, `porque`, `porque_at`. Una fila por encuesta enviada; la leen `get_utility_survey` (cifras) y `get_utility_reasons` (los porqués) para la tarjeta «Utilidad de Aly» de Inicio. Si la tabla no existe, la tarjeta no se dibuja; si falta la columna `porque`, la tarjeta sale sin la tabla de porqués |
 
 ---
 
@@ -201,6 +201,8 @@ Todas las queries de tiempo convierten a **GMT-5 (`America/Bogota`)** vía `AT T
 - `get_registered_users(from, to)` → dict total (acumulado al cierre del rango) / nuevos (primera fila dentro del rango). Cuenta por `number` y su primera fila: `users_data` no tiene UNIQUE y tiene duplicados. En México la fila nace al aceptar el aviso de privacidad
 - `get_returning_users(from, to)` → dict activos / vuelven (escribieron, `role='user'`, en 2+ semanas distintas de lunes a domingo, hora local)
 - `get_answer_coverage(from, to)` → dict preguntas / sin_info. Pregunta = mensaje `role='user'` que no es puramente social (`_SOCIAL_MSG_RE`: saludos, gracias, despedidas, respuesta al aviso). Cada una se empareja con el mensaje siguiente de su conversación (LEAD sobre toda la tabla, antes de filtrar el rango); `sin_info` = la respuesta abre con «No tengo esa información» / «I don't have that» (`_NO_INFO_RE`, la frase FACTUAL de los tres bots en el repo Aly). **Si el bot cambia esa frase, actualizar `_NO_INFO_RE`** o el % sube en falso
+- `get_utility_survey(from, to)` → dict enviadas / respondidas / si / no, o `None` sin la tabla
+- `get_utility_reasons(from, to, limit=200)` → df porque_at (GMT-5) / respuesta / porque, por fecha del porqué, sin el número; `None` sin la tabla o la columna. La tarjeta cambia `[audio] ` por 🎙️
 - `get_weekly_active_users(from, to)` → df week/users (`role='user'`, semana lunes a domingo en GMT-5). La página rellena semanas vacías con 0
 - `get_hourly_distribution(from, to)` → df hour/messages (hora en GMT-5; no se usa actualmente en UI — disponible)
 - `get_users_by_country/gender/region(from, to)` → df
@@ -352,7 +354,7 @@ Aly_Apapachar (bot) → Conversation Closer → Supabase → este dashboard
 | `public.users_data` | `onboarding_agent.py` (registro nuevo usuario) |
 | `public.conversations_data` | Conversation Closer escribe la fila inicial. El **dashboard** escribe `reviewed_at` cuando el equipo marca la flag como revisada |
 | `vector_aly.rag_embeddings` | scripts de ingest |
-| `public.encuesta_utilidad` | El bot (`EncuestaUtilidadService`, repo Aly): inserta al mandar la encuesta y escribe `respuesta` cuando la persona toca Sí o No. Hoy solo México |
+| `public.encuesta_utilidad` | El bot (`EncuestaUtilidadService`, repo Aly): inserta al mandar la encuesta, escribe `respuesta` cuando la persona toca Sí o No y `porque` con lo siguiente que escribe (desde 2026-11-26; prefijo `[audio] ` si fue nota de voz). Hoy solo México |
 
 ### Otros escritores (ruido conocido)
 `aly-evals` (repo hermano en `~/Dev/aly-evals/`) corre benchmarks contra el bot y termina escribiendo cientos de filas sentinel (`client_number IN ('eval','verify','smoke',…)`, `conversation_id LIKE 'eval-%' / 'verify-%' / 'debug-%' / …`). El filtro en `_date_filter()` las excluye automáticamente del dashboard. Antes del filtro (commit `d981c15`, 2026-05-27), `eval` solo aportaba 458 conversaciones / 918 mensajes.
