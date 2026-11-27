@@ -21,6 +21,9 @@ date_from = filters["date_from"]
 date_to   = filters["date_to"]
 bot_id    = filters["bot_id"]
 lang      = st.session_state.get("lang", "es")
+# Solo el admin ve el teléfono completo en el detalle; el resto de los roles lo
+# ve enmascarado, igual que en la tabla (ver CLAUDE.md, «Números de teléfono»).
+is_admin  = st.session_state.get("auth_role") == "admin"
 
 page_header(t("lb_page_title"), t("lb_page_sub"))
 
@@ -58,6 +61,18 @@ def _mask(number):
 def _mask_name(name):
     """El nombre del perfil de WhatsApp, enmascarado: "María López" → "M**** L****"."""
     return " ".join(w[0] + "****" for w in str(name).split())
+
+
+def _hide_number(text, number):
+    """El número de la persona, enmascarado si aparece escrito dentro de un texto
+    (un mensaje o un resumen): tal cual, solo dígitos o sin el indicativo (los
+    últimos 10 dígitos). Otros formatos (con espacios o guiones) no se detectan."""
+    s = str(number).strip()
+    digits = re.sub(r"\D", "", s)
+    for v in sorted({s, digits, digits[-10:]}, key=len, reverse=True):
+        if len(v) >= 8:
+            text = text.replace(v, _mask(v))
+    return text
 
 
 df["display_name"] = df.apply(
@@ -255,14 +270,25 @@ if pick is not None:
     display_name = user_row["display_name"]
 
     st.markdown("<div style='margin:0.9rem 0 0'></div>", unsafe_allow_html=True)
-    # El teléfono completo se muestra a propósito en el detalle (ver CLAUDE.md):
-    # es lo que el equipo necesita para contactar a la persona.
+    # Teléfono completo solo para el admin (desde 2026-11-27); los equipos de
+    # programa lo ven enmascarado. Las alertas diarias y el Excel de Alertas sí
+    # lo llevan completo, a propósito, para el equipo de respuesta.
+    phone = str(user_number) if is_admin else _mask(user_number)
     with card("detalle", f"{t('lb_detail_for')} {display_name}",
-              subtitle=f"📱 {user_number} · " + t("lb_conv_days").format(
+              subtitle=f"📱 {phone} · " + t("lb_conv_days").format(
                   c=int(user_row["total_conversations"]), d=int(user_row["days_active"])),
               icon_svg=KPI_ICONS["users"]):
         df_convs = db.get_user_conversations(user_number, date_from, date_to, bot_id=bot_id, lang=lang)
         df_msgs  = db.get_user_messages(user_number, date_from, date_to, bot_id=bot_id)
+
+        if not is_admin:
+            # Si la persona escribió su número en un mensaje, o quedó en un
+            # resumen o en las palabras clave, tampoco se ve completo ahí.
+            for frame, cols in ((df_convs, ("summary", "keywords")), (df_msgs, ("message",))):
+                for col in cols:
+                    if col in frame.columns:
+                        frame[col] = frame[col].map(
+                            lambda v: _hide_number(v, user_number) if isinstance(v, str) else v)
 
         if df_msgs.empty and df_convs.empty:
             st.info(t("lb_no_conv_data"))
